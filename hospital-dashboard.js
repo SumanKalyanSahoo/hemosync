@@ -93,7 +93,14 @@ function renderInventoryPage() {
           <div class="stat-card-label">${b.blood_type} Stock</div>
           <div class="stat-card-value" style="color:${statusColor[b.status]}">${b.units_available}</div>
           <div class="stat-card-delta" style="color:${statusColor[b.status]};"><i class="bi bi-exclamation-triangle-fill"></i> ${statusLabel[b.status]}</div>
-          <button class="btn-hs-primary" style="width:100%;margin-top:10px;font-size:0.72rem;padding:6px 10px;" onclick="showPage('newrequest');quickSetBlood('${b.blood_type}')">Request ${b.blood_type}</button>
+          <div class="d-flex gap-2 mt-2">
+            <button class="btn-hs-primary" style="flex:1;font-size:0.7rem;padding:5px 8px;" onclick="openInventoryEdit('${b.blood_type}')">
+              <i class="bi bi-pencil"></i> Update
+            </button>
+            <button class="btn-hs-secondary" style="flex:1;font-size:0.7rem;padding:5px 8px;" onclick="showPage('newrequest');quickSetBlood('${b.blood_type}')">
+              Request
+            </button>
+          </div>
         </div>
       </div>`).join('');
   }
@@ -113,13 +120,105 @@ function renderInventoryPage() {
             <div style="height:5px;background:var(--hs-bg);border-radius:100px;overflow:hidden;margin-top:7px;">
               <div style="height:100%;width:${pct}%;background:${barColor[b.status]};border-radius:100px;"></div>
             </div>
-            <div style="display:flex;justify-content:space-between;margin-top:5px;">
+            <div style="display:flex;justify-content:space-between;margin-top:8px;">
               <span style="font-size:0.62rem;color:var(--hs-text-3);">${pct}% capacity</span>
-              <a href="#" style="font-size:0.62rem;color:var(--hs-red);font-weight:600;" onclick="showPage('newrequest');quickSetBlood('${b.blood_type}');return false;">Request →</a>
+              <button onclick="openInventoryEdit('${b.blood_type}')"
+                style="font-size:0.62rem;color:var(--hs-blue);font-weight:600;background:none;border:none;cursor:pointer;padding:0;">
+                <i class="bi bi-pencil"></i> Update
+              </button>
             </div>
           </div>
         </div>`;
     }).join('');
+  }
+}
+
+// ── INVENTORY EDIT ─────────────────────────────
+let editingBloodType = null;
+
+function openInventoryEdit(bloodType) {
+  editingBloodType = bloodType;
+  const entry = bloodData.find(b => b.blood_type === bloodType);
+  if (!entry) return;
+
+  setEl('editBloodTypeLabel', bloodType);
+  const unitsEl = document.getElementById('editUnitsAvailable');
+  const maxEl   = document.getElementById('editMaxCapacity');
+  if (unitsEl) unitsEl.value = entry.units_available;
+  if (maxEl)   maxEl.value   = entry.max_capacity;
+
+  updateEditPreview(entry.units_available, entry.max_capacity);
+
+  const panel = document.getElementById('inventoryEditPanel');
+  if (panel) {
+    panel.style.display = 'block';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // Live preview as user types
+  if (unitsEl) unitsEl.oninput = () => updateEditPreview(unitsEl.value, maxEl?.value);
+  if (maxEl)   maxEl.oninput   = () => updateEditPreview(unitsEl?.value, maxEl.value);
+}
+
+function updateEditPreview(units, max) {
+  const el = document.getElementById('editStatusPreview');
+  if (!el || !units || !max) return;
+  const u = parseInt(units), m = parseInt(max);
+  const pct   = Math.round((u / m) * 100);
+  const status = u === 0 ? 'out' : u <= m * 0.15 ? 'critical' : u <= m * 0.30 ? 'low' : 'ok';
+  const color  = statusColor[status];
+  const label  = statusLabel[status];
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:160px;">
+        <div style="height:8px;background:var(--hs-bg2);border-radius:100px;overflow:hidden;">
+          <div style="height:100%;width:${Math.min(pct,100)}%;background:${color};border-radius:100px;transition:width 0.3s;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;">
+          <span>${u} / ${m} units (${pct}%)</span>
+          <span style="font-weight:600;color:${color};">${label}</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+function closeInventoryEdit() {
+  editingBloodType = null;
+  const panel = document.getElementById('inventoryEditPanel');
+  if (panel) panel.style.display = 'none';
+}
+
+async function saveInventoryUpdate() {
+  if (!editingBloodType) return;
+  const units = parseInt(document.getElementById('editUnitsAvailable')?.value);
+  const max   = parseInt(document.getElementById('editMaxCapacity')?.value);
+
+  if (isNaN(units) || units < 0)  { showToast('⚠️', 'Invalid', 'Units must be 0 or more.');       return; }
+  if (isNaN(max)   || max < 1)    { showToast('⚠️', 'Invalid', 'Max capacity must be at least 1.'); return; }
+  if (units > max)                 { showToast('⚠️', 'Invalid', 'Units cannot exceed max capacity.'); return; }
+
+  const btn = document.querySelector('#inventoryEditPanel .btn-hs-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+  try {
+    // Encode blood type for URL — A+ needs to become A%2B etc.
+    const encoded = encodeURIComponent(editingBloodType);
+    const res = await apiRequest(`/inventory/${encoded}`, {
+      method: 'PATCH',
+      body:   JSON.stringify({ units_available: units, max_capacity: max }),
+    });
+    if (!res) return;
+    const json = await res.json();
+    if (!json.success) { showToast('❌', 'Error', json.message); return; }
+
+    showToast('✅', 'Inventory Updated', `${editingBloodType}: ${units} / ${max} units saved to database.`);
+    closeInventoryEdit();
+    await loadInventory();   // re-fetch from DB so grid reflects real values
+  } catch (e) {
+    console.error('Inventory update failed', e);
+    showToast('❌', 'Error', 'Could not update inventory. Check console.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg"></i> Save Stock Update'; }
   }
 }
 
