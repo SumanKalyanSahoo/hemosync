@@ -420,14 +420,48 @@ async function loadHospitalProfile() {
     if (!res) return;
     const json = await res.json();
     const hp   = json.data?.profile;
-    if (!hp) return;
+    const user = json.data?.user;
 
-    const setVal = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
-    setVal('profHospName',    hp.org_name);
-    setVal('profAuthPerson',  hp.authorized_person);
-    setVal('profEmail',       json.data.user?.email);
-    setEl('formHospName',     hp.org_name || sessionUser?.name || '');
-    setEl('sideHospName',     hp.org_name || sessionUser?.name || '');
+    const setVal = (id, val) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (el.tagName === 'SELECT') { if (val) el.value = val; }
+      else { el.value = val || ''; }
+    };
+
+    // hospital_profiles fields
+    if (hp) {
+      setVal('profHospName',      hp.org_name);
+      setVal('profAuthPerson',    hp.authorized_person);
+      setVal('profHospType',      hp.hospital_type);
+      setVal('profBedCapacity',   hp.bed_capacity);
+
+      // Update sidebar + form label
+      const orgName = hp.org_name || sessionUser?.name || '';
+      setEl('formHospName', orgName);
+      setEl('sideHospName', orgName);
+
+      // Profile card stats
+      const totalReqs = allRequests.length;
+      const fulfilled = allRequests.filter(r => r.status === 'done').length;
+      const active    = allRequests.filter(r => ['pending','approved','enroute'].includes(r.status)).length;
+      setEl('profileTotalReqs', totalReqs || '—');
+      setEl('profileFulfilled', fulfilled || '—');
+      setEl('profileActive',    active    || '—');
+    }
+
+    // users table fields
+    if (user) {
+      setVal('profEmail',   user.email);
+      setVal('profPhone',   user.phone);
+      setVal('profAddress', user.address);
+
+      // Update topbar name + avatar
+      const initials = (user.name || '').split(' ').filter(w => /[A-Za-z]/.test(w)).map(w => w[0]).join('').slice(0,2).toUpperCase() || 'H';
+      setEl('profileAvatar', initials);
+      setEl('profileName',   user.name);
+      setEl('profileEmail',  user.email);
+    }
   } catch (e) { console.error('Profile load failed', e); }
 }
 
@@ -435,19 +469,40 @@ async function saveHospitalProfile() {
   const btn = document.querySelector('#page-profile .btn-hs-primary');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
   try {
-    const res  = await apiRequest('/users/me/hospital-profile', {
+    const org_name          = document.getElementById('profHospName')?.value?.trim();
+    const authorized_person = document.getElementById('profAuthPerson')?.value?.trim();
+    const hospital_type     = document.getElementById('profHospType')?.value;
+    const bed_capacity      = document.getElementById('profBedCapacity')?.value;
+    const phone             = document.getElementById('profPhone')?.value?.trim();
+    const address           = document.getElementById('profAddress')?.value?.trim();
+
+    const res = await apiRequest('/users/me/hospital-profile', {
       method: 'PATCH',
       body:   JSON.stringify({
-        org_name:          document.getElementById('profHospName')?.value,
-        authorized_person: document.getElementById('profAuthPerson')?.value,
+        org_name,
+        authorized_person,
+        hospital_type,
+        bed_capacity:  bed_capacity  ? parseInt(bed_capacity)  : undefined,
+        phone:         phone         || undefined,
+        address:       address       || undefined,
       }),
     });
     if (!res) return;
     const json = await res.json();
-    if (json.success) showToast('✅', 'Profile Updated', 'Hospital details saved.');
-    else showToast('❌', 'Error', json.message);
-  } catch (e) { showToast('❌', 'Error', 'Could not save profile'); }
-  finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg"></i> Save Changes'; } }
+    if (!json.success) { showToast('❌', 'Error', json.message); return; }
+
+    // Update sidebar and form label immediately — no refresh needed
+    if (org_name) {
+      setEl('formHospName', org_name);
+      setEl('sideHospName', org_name);
+    }
+    showToast('✅', 'Profile Saved', 'All changes saved to the database.');
+  } catch (e) {
+    console.error('Save profile error:', e);
+    showToast('❌', 'Error', 'Could not save profile');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg"></i> Save Changes'; }
+  }
 }
 
 // ── PAGE NAV ───────────────────────────────────
