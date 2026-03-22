@@ -302,90 +302,47 @@ function renderAllRequests(data) {
 async function changeStatus(id, status) {
   if (!status) return;
 
-  // Optimistically grey out the row while saving
-  const rows = document.querySelectorAll('#allRequestsTable tr, #overviewRequestsTable tr');
-  rows.forEach(r => { if (r.innerHTML.includes(id)) r.style.opacity = '0.5'; });
+  // Disable the dropdown that triggered this while saving
+  const selects = document.querySelectorAll('select');
+  selects.forEach(s => { if (s.onchange && s.getAttribute('onchange')?.includes(id)) s.disabled = true; });
 
   try {
     const res = await apiRequest(`/requests/${id}/status`, {
       method: 'PATCH',
       body:   JSON.stringify({ status }),
     });
-    if (!res) { rows.forEach(r => r.style.opacity = ''); return; }
+
+    if (!res) return;
     const json = await res.json();
 
     if (!json.success) {
-      rows.forEach(r => r.style.opacity = '');
       showToast('❌', 'Error', json.message);
       return;
     }
 
-    // ── LIVE UPDATE: apply inventory change instantly from the response ──
-    // json.data.inventory is returned by backend when status === 'done'
-    if (json.data.inventory) {
-      const inv = json.data.inventory;
+    const label = { approved:'Approved', enroute:'Dispatched', done:'Fulfilled', cancelled:'Cancelled' };
+    showToast('✅', `Request ${label[status] || status}`, `Status updated successfully`);
 
-      // 1. Update in-memory bloodData array
-      const idx = bloodData.findIndex(b => b.blood_type === inv.blood_type);
-      if (idx !== -1) bloodData[idx] = inv;
+    // ── ALWAYS reload both requests AND inventory from DB ──
+    // Run both fetches in parallel for speed
+    await Promise.all([
+      loadRequests(),
+      loadInventory(),
+    ]);
 
-      // 2. Re-render inventory snapshot on overview page immediately
-      renderInventorySnapshot();
-
-      // 3. Re-render full inventory grid immediately
-      renderInventoryPage();
-
-      // 4. Re-render alert banners if any type just became critical
-      renderAlerts();
-
-      // 5. Flash the updated blood type card so the user sees it changed
-      flashInventoryCard(inv.blood_type);
-
-      showToast(
-        '🩸',
-        `Inventory Updated — ${inv.blood_type}`,
-        `${inv.units_available} units remaining · ${statusLabel[inv.status] || inv.status}`
-      );
-    } else {
-      showToast('✅', 'Status Updated', `Request marked as ${status}`);
-    }
-
-    // Reload requests to refresh the table rows (resets dropdowns too)
-    await loadRequests();
+    // After data is fresh, re-render everything that shows inventory
+    renderInventorySnapshot();  // overview sidebar bar chart
+    renderInventoryPage();      // full inventory grid
+    renderAlerts();             // critical stock banners
+    renderOverviewStats();      // stat cards (critical stock count)
 
   } catch (e) {
-    console.error('changeStatus error', e);
-    rows.forEach(r => r.style.opacity = '');
-    showToast('❌', 'Error', 'Could not update status');
+    console.error('changeStatus error:', e);
+    showToast('❌', 'Error', 'Could not update status. Check your connection.');
+  } finally {
+    // Re-enable all selects (they get re-rendered by loadRequests anyway)
+    selects.forEach(s => { s.disabled = false; });
   }
-}
-
-// Flash a blood type card gold briefly to signal it just updated
-function flashInventoryCard(bloodType) {
-  // Try to find the card in the inventory grid
-  const allCards = document.querySelectorAll('#inventoryFullGrid > div');
-  allCards.forEach(card => {
-    if (card.textContent.trim().startsWith(bloodType)) {
-      card.style.transition = 'box-shadow 0.2s, border-color 0.2s';
-      card.querySelector('div').style.borderColor = 'rgba(59,130,246,0.6)';
-      card.querySelector('div').style.boxShadow  = '0 0 0 3px rgba(59,130,246,0.15)';
-      setTimeout(() => {
-        if (card.querySelector('div')) {
-          card.querySelector('div').style.borderColor = '';
-          card.querySelector('div').style.boxShadow  = '';
-        }
-      }, 1800);
-    }
-  });
-  // Also flash the snapshot bar
-  const snapItems = document.querySelectorAll('#inventorySnapshot .inv-item');
-  snapItems.forEach(item => {
-    if (item.querySelector('.inv-type')?.textContent === bloodType) {
-      item.style.background = 'rgba(59,130,246,0.08)';
-      item.style.borderRadius = '6px';
-      setTimeout(() => { item.style.background = ''; }, 1800);
-    }
-  });
 }
 
 async function filterRequests(val) {
