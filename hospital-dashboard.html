@@ -17,7 +17,7 @@
 
 <div class="dash-shell">
 
-  <!-- SIDEBAR -->
+  <!-- ══ SIDEBAR ══ -->
   <aside class="sidebar" id="sidebar">
     <a class="sidebar-logo" href="index.html">
       <div class="sidebar-logo-mark">
@@ -42,7 +42,7 @@
       </a>
       <a class="nav-item-hs" onclick="showPage('requests')" href="#">
         <i class="bi bi-droplet"></i> Blood Requests
-        <span class="nav-badge" id="pendingBadge">3</span>
+        <span class="nav-badge" id="pendingBadge">0</span>
       </a>
       <a class="nav-item-hs" onclick="showPage('inventory')" href="#">
         <i class="bi bi-archive"></i> Inventory
@@ -64,9 +64,10 @@
     </div>
   </aside>
 
-  <!-- MAIN -->
+  <!-- ══ MAIN ══ -->
   <main class="dash-main">
 
+    <!-- Top Bar -->
     <div class="dash-topbar">
       <div>
         <div class="topbar-title" id="topbarTitle">Overview</div>
@@ -88,65 +89,89 @@
       </div>
     </div>
 
-    <!-- PAGE: OVERVIEW -->
+    <!-- ══════════════════════════════════
+         PAGE: OVERVIEW
+    ══════════════════════════════════ -->
     <div class="dash-page active" id="page-overview">
+
+      <!-- Critical Alerts -->
       <div id="alertsContainer" class="mb-4"></div>
 
+      <!-- Stat Cards -->
       <div class="row g-3 mb-4">
         <div class="col-6 col-lg-3">
           <div class="stat-card">
-            <div class="stat-card-icon" style="background:var(--hs-red-subtle);color:var(--hs-red)"><i class="bi bi-droplet-fill"></i></div>
+            <div class="stat-card-icon" style="background:var(--hs-red-subtle);color:var(--hs-red)">
+              <i class="bi bi-droplet-fill"></i>
+            </div>
             <div class="stat-card-label">Active Requests</div>
-            <div class="stat-card-value" style="color:var(--hs-red)">7</div>
-            <div class="stat-card-delta delta-up"><i class="bi bi-arrow-up"></i> 2 new today</div>
+            <div class="stat-card-value" style="color:var(--hs-red)" id="statActive">—</div>
+            <div class="stat-card-delta delta-up"><i class="bi bi-clock"></i> <span id="statActiveSub">Loading...</span></div>
           </div>
         </div>
         <div class="col-6 col-lg-3">
           <div class="stat-card">
-            <div class="stat-card-icon" style="background:var(--hs-green-bg);color:var(--hs-green)"><i class="bi bi-check-circle-fill"></i></div>
-            <div class="stat-card-label">Fulfilled (30d)</div>
-            <div class="stat-card-value" style="color:var(--hs-green)">94</div>
-            <div class="stat-card-delta delta-up"><i class="bi bi-arrow-up"></i> 98.4% rate</div>
+            <div class="stat-card-icon" style="background:var(--hs-green-bg);color:var(--hs-green)">
+              <i class="bi bi-check-circle-fill"></i>
+            </div>
+            <div class="stat-card-label">Fulfilled</div>
+            <div class="stat-card-value" style="color:var(--hs-green)" id="statFulfilled">—</div>
+            <div class="stat-card-delta delta-up"><i class="bi bi-arrow-up"></i> All time</div>
           </div>
         </div>
         <div class="col-6 col-lg-3">
           <div class="stat-card">
-            <div class="stat-card-icon" style="background:var(--hs-blue-bg);color:var(--hs-blue)"><i class="bi bi-truck"></i></div>
+            <div class="stat-card-icon" style="background:var(--hs-blue-bg);color:var(--hs-blue)">
+              <i class="bi bi-truck"></i>
+            </div>
             <div class="stat-card-label">En Route Now</div>
-            <div class="stat-card-value" style="color:var(--hs-blue)">2</div>
-            <div class="stat-card-delta delta-neutral"><i class="bi bi-clock"></i> ~18 min ETA</div>
+            <div class="stat-card-value" style="color:var(--hs-blue)" id="statEnroute">—</div>
+            <div class="stat-card-delta delta-neutral"><i class="bi bi-clock"></i> Live</div>
           </div>
         </div>
         <div class="col-6 col-lg-3">
           <div class="stat-card">
-            <div class="stat-card-icon" style="background:var(--hs-amber-bg);color:var(--hs-amber)"><i class="bi bi-exclamation-triangle-fill"></i></div>
+            <div class="stat-card-icon" style="background:var(--hs-amber-bg);color:var(--hs-amber)">
+              <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
             <div class="stat-card-label">Critical Stocks</div>
-            <div class="stat-card-value" style="color:var(--hs-amber)">2</div>
-            <div class="stat-card-delta delta-down"><i class="bi bi-arrow-down"></i> B− and O− low</div>
+            <div class="stat-card-value" style="color:var(--hs-amber)" id="statCritStock">—</div>
+            <div class="stat-card-delta delta-down"><i class="bi bi-exclamation-circle"></i> Need attention</div>
           </div>
         </div>
       </div>
 
+      <!-- Two column: Recent Requests + Inventory Snapshot -->
       <div class="row g-3">
         <div class="col-lg-7">
           <div class="panel">
             <div class="panel-header">
               <div>
                 <div class="panel-title">Recent Requests</div>
-                <div class="panel-sub">Last 5 blood requests</div>
+                <div class="panel-sub">Latest blood requests from your hospital</div>
               </div>
               <a class="panel-action" onclick="showPage('requests')" href="#">View All</a>
             </div>
             <div style="overflow-x:auto;">
               <table class="req-table">
                 <thead>
-                  <tr><th>Request ID</th><th>Blood</th><th>Units</th><th>Urgency</th><th>Status</th><th>Time</th></tr>
+                  <tr>
+                    <th>Request ID</th>
+                    <th>Blood</th>
+                    <th>Units</th>
+                    <th>Urgency</th>
+                    <th>Status</th>
+                    <th>Time</th>
+                  </tr>
                 </thead>
-                <tbody id="overviewRequestsTable"></tbody>
+                <tbody id="overviewRequestsTable">
+                  <tr><td colspan="6" style="padding:20px;text-align:center;color:var(--hs-text-3);font-size:0.82rem;">Loading...</td></tr>
+                </tbody>
               </table>
             </div>
           </div>
         </div>
+
         <div class="col-lg-5">
           <div class="panel" style="height:100%">
             <div class="panel-header">
@@ -157,14 +182,18 @@
               <a class="panel-action" onclick="showPage('inventory')" href="#">Manage</a>
             </div>
             <div class="panel-body" style="padding:12px 18px;">
-              <div id="inventorySnapshot"></div>
+              <div id="inventorySnapshot">
+                <div style="padding:20px;text-align:center;color:var(--hs-text-3);font-size:0.82rem;">Loading...</div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- PAGE: BLOOD REQUESTS -->
+    <!-- ══════════════════════════════════
+         PAGE: BLOOD REQUESTS
+    ══════════════════════════════════ -->
     <div class="dash-page" id="page-requests">
       <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
         <div>
@@ -178,56 +207,120 @@
             <option value="approved">Approved</option>
             <option value="enroute">En Route</option>
             <option value="done">Done</option>
+            <option value="cancelled">Cancelled</option>
           </select>
           <button class="btn-hs-primary" onclick="showPage('newrequest')">
             <i class="bi bi-plus-lg"></i> New Request
           </button>
         </div>
       </div>
+
       <div class="panel">
         <div style="overflow-x:auto;">
           <table class="req-table">
             <thead>
-              <tr><th>Request ID</th><th>Blood Type</th><th>Units</th><th>Component</th><th>Patient</th><th>Urgency</th><th>Status</th><th>Requested</th><th>Action</th></tr>
+              <tr>
+                <th>Request ID</th>
+                <th>Blood</th>
+                <th>Units</th>
+                <th>Component</th>
+                <th>Patient</th>
+                <th>Urgency</th>
+                <th>Status</th>
+                <th>Time</th>
+                <th>Action</th>
+              </tr>
             </thead>
-            <tbody id="allRequestsTable"></tbody>
+            <tbody id="allRequestsTable">
+              <tr><td colspan="9" style="padding:20px;text-align:center;color:var(--hs-text-3);font-size:0.82rem;">Loading...</td></tr>
+            </tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- PAGE: INVENTORY -->
+    <!-- ══════════════════════════════════
+         PAGE: INVENTORY
+    ══════════════════════════════════ -->
     <div class="dash-page" id="page-inventory">
       <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
         <div>
           <h2 style="font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;margin-bottom:2px;">Blood Inventory</h2>
-          <div style="font-size:0.76rem;color:var(--hs-text-3);">Live stock levels across all blood types</div>
+          <div style="font-size:0.76rem;color:var(--hs-text-3);">Click Update on any card to edit stock levels</div>
         </div>
         <div class="d-flex gap-2">
           <div style="display:flex;align-items:center;gap:5px;background:var(--hs-green-bg);border:1px solid rgba(22,163,74,0.18);border-radius:7px;padding:5px 10px;font-size:0.7rem;color:var(--hs-green);">
             <span style="width:5px;height:5px;border-radius:50%;background:var(--hs-green);animation:blink 1.5s infinite;"></span>
             Live Sync
           </div>
-          <button class="btn-hs-secondary" onclick="refreshData()">
+          <button class="btn-hs-secondary" onclick="loadInventory()">
             <i class="bi bi-arrow-clockwise"></i> Refresh
           </button>
         </div>
       </div>
+
+      <!-- Critical stock alert cards -->
       <div class="row g-3 mb-4" id="criticalStockCards"></div>
+
+      <!-- Inline Edit Panel — shown when Update is clicked -->
+      <div id="inventoryEditPanel" style="display:none;margin-bottom:16px;">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Update Stock —
+                <span id="editBloodTypeLabel" style="color:var(--hs-red)">—</span>
+              </div>
+              <div class="panel-sub">Set the current available units — saved directly to the database</div>
+            </div>
+            <button class="btn-hs-secondary" onclick="closeInventoryEdit()">
+              <i class="bi bi-x"></i> Cancel
+            </button>
+          </div>
+          <div class="panel-body">
+            <div class="row g-3 align-items-end">
+              <div class="col-md-4">
+                <label class="form-label-hs">Units Available *</label>
+                <input type="number" class="form-control-hs" id="editUnitsAvailable"
+                       min="0" max="9999" placeholder="e.g. 84"
+                       oninput="liveEditPreview()"/>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label-hs">Max Capacity</label>
+                <input type="number" class="form-control-hs" id="editMaxCapacity"
+                       min="1" max="9999" placeholder="e.g. 120"
+                       oninput="liveEditPreview()"/>
+              </div>
+              <div class="col-md-4">
+                <button class="btn-hs-primary" style="width:100%;" onclick="saveInventoryUpdate()">
+                  <i class="bi bi-check-lg"></i> Save Stock Update
+                </button>
+              </div>
+            </div>
+            <!-- Live preview bar -->
+            <div id="editStatusPreview" style="margin-top:14px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Full inventory grid -->
       <div class="panel">
         <div class="panel-header">
           <div>
             <div class="panel-title">All Blood Types</div>
-            <div class="panel-sub">Current available units in blood bank</div>
+            <div class="panel-sub">8 blood types · updates save to database immediately</div>
           </div>
         </div>
         <div class="panel-body">
-          <div class="row g-3" id="inventoryFullGrid"></div>
+          <div class="row g-3" id="inventoryFullGrid">
+            <div class="col-12" style="padding:20px;text-align:center;color:var(--hs-text-3);font-size:0.82rem;">Loading inventory...</div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- PAGE: NEW REQUEST -->
+    <!-- ══════════════════════════════════
+         PAGE: NEW REQUEST
+    ══════════════════════════════════ -->
     <div class="dash-page" id="page-newrequest">
       <div class="mb-4">
         <h2 style="font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;margin-bottom:2px;">New Blood Request</h2>
@@ -247,6 +340,8 @@
               </span>
             </div>
             <div class="panel-body">
+
+              <!-- Hospital auto-fill notice -->
               <div style="background:var(--hs-blue-bg);border:1px solid rgba(59,130,246,0.18);border-radius:8px;padding:10px 13px;margin-bottom:18px;display:flex;align-items:center;gap:9px;">
                 <i class="bi bi-building" style="color:var(--hs-blue);font-size:0.9rem;"></i>
                 <div>
@@ -260,17 +355,18 @@
                   <label class="form-label-hs">Blood Type *</label>
                   <select class="form-select-hs" id="nrBloodType" onchange="updateNRSummary()">
                     <option value="">Select type</option>
-                    <option>A+</option><option>A−</option>
-                    <option>B+</option><option>B−</option>
-                    <option>AB+</option><option>AB−</option>
-                    <option>O+</option><option>O−</option>
+                    <option>A+</option><option>A-</option>
+                    <option>B+</option><option>B-</option>
+                    <option>AB+</option><option>AB-</option>
+                    <option>O+</option><option>O-</option>
                   </select>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label-hs">Units Required *</label>
-                  <input type="number" class="form-control-hs" id="nrUnits" min="1" max="100" placeholder="e.g. 4" oninput="updateNRSummary()"/>
+                  <input type="number" class="form-control-hs" id="nrUnits" min="1" max="500" placeholder="e.g. 4" oninput="updateNRSummary()"/>
                 </div>
               </div>
+
               <div class="mb-3">
                 <label class="form-label-hs">Component Type *</label>
                 <select class="form-select-hs" id="nrComponent" onchange="updateNRSummary()">
@@ -281,6 +377,7 @@
                   <option>Cryoprecipitate</option>
                 </select>
               </div>
+
               <div class="mb-3">
                 <label class="form-label-hs">Urgency Level *</label>
                 <div class="d-flex gap-2">
@@ -289,6 +386,7 @@
                   <button class="urg-btn" onclick="setNRUrgency(this,'Critical')">🔴 Critical</button>
                 </div>
               </div>
+
               <div class="row g-3 mb-3">
                 <div class="col-md-6">
                   <label class="form-label-hs">Patient Name</label>
@@ -299,14 +397,17 @@
                   <input type="text" class="form-control-hs" id="nrWard" placeholder="e.g. ICU, Ward 4B"/>
                 </div>
               </div>
+
               <div class="mb-3">
                 <label class="form-label-hs">Doctor / Ordering Physician</label>
                 <input type="text" class="form-control-hs" id="nrDoctor" placeholder="Dr. Name"/>
               </div>
+
               <div class="mb-4">
                 <label class="form-label-hs">Clinical Notes</label>
                 <textarea class="form-control-hs" id="nrNotes" rows="3" placeholder="Cross-match requirements, special handling..."></textarea>
               </div>
+
               <div class="d-flex gap-2">
                 <button class="btn-hs-primary flex-fill" onclick="submitNewRequest()">
                   <i class="bi bi-send-fill"></i> Submit Request
@@ -319,15 +420,19 @@
           </div>
         </div>
 
+        <!-- Summary + availability check -->
         <div class="col-lg-5">
           <div class="panel mb-3">
-            <div class="panel-header"><div class="panel-title">Request Summary</div></div>
+            <div class="panel-header">
+              <div class="panel-title">Request Summary</div>
+            </div>
             <div id="nrSummaryRows" style="padding:2px 0;"></div>
           </div>
+
           <div class="panel">
             <div class="panel-header">
               <div class="panel-title">Availability Check</div>
-              <div class="panel-sub">Real-time stock</div>
+              <div class="panel-sub">Real-time stock for selected type</div>
             </div>
             <div class="panel-body" id="nrAvailPanel">
               <div style="text-align:center;padding:14px;color:var(--hs-text-3);font-size:0.78rem;">
@@ -340,13 +445,17 @@
       </div>
     </div>
 
-    <!-- PAGE: HOSPITAL PROFILE -->
+    <!-- ══════════════════════════════════
+         PAGE: HOSPITAL PROFILE
+    ══════════════════════════════════ -->
     <div class="dash-page" id="page-profile">
       <div class="mb-4">
         <h2 style="font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;margin-bottom:2px;">Hospital Profile</h2>
         <div style="font-size:0.76rem;color:var(--hs-text-3);">Manage your hospital account details</div>
       </div>
+
       <div class="row g-3">
+        <!-- Profile card -->
         <div class="col-lg-4">
           <div class="panel">
             <div class="panel-body" style="text-align:center;padding:28px 20px;">
@@ -357,58 +466,75 @@
                 <i class="bi bi-shield-fill-check"></i> Verified Hospital
               </div>
               <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--hs-border2);">
-                <div style="display:flex;justify-content:space-between;margin-bottom:7px;"><span style="font-size:0.73rem;color:var(--hs-text-3);">Member since</span><span style="font-size:0.73rem;font-weight:500;">Jan 2024</span></div>
-                <div style="display:flex;justify-content:space-between;margin-bottom:7px;"><span style="font-size:0.73rem;color:var(--hs-text-3);">Total Requests</span><span style="font-size:0.73rem;font-weight:500;">312</span></div>
-                <div style="display:flex;justify-content:space-between;"><span style="font-size:0.73rem;color:var(--hs-text-3);">Success Rate</span><span style="font-size:0.73rem;font-weight:500;color:var(--hs-green);">98.4%</span></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:7px;">
+                  <span style="font-size:0.73rem;color:var(--hs-text-3);">Total Requests</span>
+                  <span style="font-size:0.73rem;font-weight:500;" id="profileTotalReqs">—</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:7px;">
+                  <span style="font-size:0.73rem;color:var(--hs-text-3);">Fulfilled</span>
+                  <span style="font-size:0.73rem;font-weight:500;color:var(--hs-green);" id="profileFulfilled">—</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;">
+                  <span style="font-size:0.73rem;color:var(--hs-text-3);">Active</span>
+                  <span style="font-size:0.73rem;font-weight:500;color:var(--hs-red);" id="profileActive">—</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
+        <!-- Hospital info form -->
         <div class="col-lg-8">
           <div class="panel">
-            <div class="panel-header"><div class="panel-title">Hospital Information</div></div>
+            <div class="panel-header">
+              <div class="panel-title">Hospital Information</div>
+            </div>
             <div class="panel-body">
               <div class="row g-3 mb-3">
                 <div class="col-md-6">
                   <label class="form-label-hs">Hospital / Organization Name</label>
-                  <input class="form-control-hs" value="City General Hospital" id="profHospName"/>
+                  <input class="form-control-hs" id="profHospName" placeholder="e.g. City General Hospital"/>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label-hs">Authorized Person</label>
-                  <input class="form-control-hs" id="profAuthPerson" value="Dr. Ramesh Verma"/>
+                  <input class="form-control-hs" id="profAuthPerson" placeholder="Dr. Name"/>
                 </div>
               </div>
               <div class="row g-3 mb-3">
                 <div class="col-md-6">
                   <label class="form-label-hs">Email Address</label>
-                  <input class="form-control-hs" id="profEmail" value="admin@hospital.com"/>
+                  <input class="form-control-hs" id="profEmail" placeholder="admin@hospital.com"/>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label-hs">Contact Number</label>
-                  <input class="form-control-hs" placeholder="+91 98765 43210"/>
+                  <input class="form-control-hs" id="profPhone" placeholder="+91 98765 43210"/>
                 </div>
               </div>
               <div class="mb-3">
                 <label class="form-label-hs">Hospital Address</label>
-                <input class="form-control-hs" placeholder="Street, City, State, PIN"/>
+                <input class="form-control-hs" id="profAddress" placeholder="Street, City, State, PIN"/>
               </div>
               <div class="row g-3 mb-3">
                 <div class="col-md-6">
                   <label class="form-label-hs">Hospital Type</label>
-                  <select class="form-select-hs">
-                    <option>Government</option><option>Private</option><option>Trust / NGO</option>
+                  <select class="form-select-hs" id="profHospType">
+                    <option>Government</option>
+                    <option>Private</option>
+                    <option>Trust / NGO</option>
                   </select>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label-hs">Bed Capacity</label>
-                  <input class="form-control-hs" placeholder="e.g. 500"/>
+                  <input class="form-control-hs" id="profBedCapacity" placeholder="e.g. 500"/>
                 </div>
               </div>
               <div class="d-flex gap-2">
-                <button class="btn-hs-primary" onclick="showToast('✅','Profile Updated','Hospital details saved.')">
+                <button class="btn-hs-primary" onclick="saveHospitalProfile()">
                   <i class="bi bi-check-lg"></i> Save Changes
                 </button>
-                <button class="btn-hs-secondary"><i class="bi bi-x"></i> Cancel</button>
+                <button class="btn-hs-secondary" onclick="loadHospitalProfile()">
+                  <i class="bi bi-arrow-counterclockwise"></i> Reset
+                </button>
               </div>
             </div>
           </div>
@@ -419,9 +545,13 @@
   </main>
 </div>
 
+<!-- Toast container -->
 <div class="hs-toast-container" id="toastContainer"></div>
-<script src="api-client.js"></script>
+
+<!-- Scripts — order matters: Bootstrap → api-client → dashboard logic -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="api-client.js"></script>
 <script src="hospital-dashboard.js"></script>
+
 </body>
 </html>
