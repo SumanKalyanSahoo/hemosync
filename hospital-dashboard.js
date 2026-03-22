@@ -248,6 +248,10 @@ function renderOverviewStats() {
   set('statFulfilled', fulfilled);
   set('statEnroute',   enroute);
   set('statCritStock', critStock);
+
+  // Also keep sidebar badge live
+  const badge = document.getElementById('pendingBadge');
+  if (badge) badge.textContent = allRequests.filter(r => r.status === 'pending').length;
 }
 
 function updatePendingBadge() {
@@ -297,17 +301,91 @@ function renderAllRequests(data) {
 
 async function changeStatus(id, status) {
   if (!status) return;
+
+  // Optimistically grey out the row while saving
+  const rows = document.querySelectorAll('#allRequestsTable tr, #overviewRequestsTable tr');
+  rows.forEach(r => { if (r.innerHTML.includes(id)) r.style.opacity = '0.5'; });
+
   try {
-    const res  = await apiRequest(`/requests/${id}/status`, {
+    const res = await apiRequest(`/requests/${id}/status`, {
       method: 'PATCH',
       body:   JSON.stringify({ status }),
     });
-    if (!res) return;
+    if (!res) { rows.forEach(r => r.style.opacity = ''); return; }
     const json = await res.json();
-    if (!json.success) { showToast('❌', 'Error', json.message); return; }
-    showToast('✅', 'Status Updated', `Request marked as ${status}`);
+
+    if (!json.success) {
+      rows.forEach(r => r.style.opacity = '');
+      showToast('❌', 'Error', json.message);
+      return;
+    }
+
+    // ── LIVE UPDATE: apply inventory change instantly from the response ──
+    // json.data.inventory is returned by backend when status === 'done'
+    if (json.data.inventory) {
+      const inv = json.data.inventory;
+
+      // 1. Update in-memory bloodData array
+      const idx = bloodData.findIndex(b => b.blood_type === inv.blood_type);
+      if (idx !== -1) bloodData[idx] = inv;
+
+      // 2. Re-render inventory snapshot on overview page immediately
+      renderInventorySnapshot();
+
+      // 3. Re-render full inventory grid immediately
+      renderInventoryPage();
+
+      // 4. Re-render alert banners if any type just became critical
+      renderAlerts();
+
+      // 5. Flash the updated blood type card so the user sees it changed
+      flashInventoryCard(inv.blood_type);
+
+      showToast(
+        '🩸',
+        `Inventory Updated — ${inv.blood_type}`,
+        `${inv.units_available} units remaining · ${statusLabel[inv.status] || inv.status}`
+      );
+    } else {
+      showToast('✅', 'Status Updated', `Request marked as ${status}`);
+    }
+
+    // Reload requests to refresh the table rows (resets dropdowns too)
     await loadRequests();
-  } catch (e) { showToast('❌', 'Error', 'Could not update status'); }
+
+  } catch (e) {
+    console.error('changeStatus error', e);
+    rows.forEach(r => r.style.opacity = '');
+    showToast('❌', 'Error', 'Could not update status');
+  }
+}
+
+// Flash a blood type card gold briefly to signal it just updated
+function flashInventoryCard(bloodType) {
+  // Try to find the card in the inventory grid
+  const allCards = document.querySelectorAll('#inventoryFullGrid > div');
+  allCards.forEach(card => {
+    if (card.textContent.trim().startsWith(bloodType)) {
+      card.style.transition = 'box-shadow 0.2s, border-color 0.2s';
+      card.querySelector('div').style.borderColor = 'rgba(59,130,246,0.6)';
+      card.querySelector('div').style.boxShadow  = '0 0 0 3px rgba(59,130,246,0.15)';
+      setTimeout(() => {
+        if (card.querySelector('div')) {
+          card.querySelector('div').style.borderColor = '';
+          card.querySelector('div').style.boxShadow  = '';
+        }
+      }, 1800);
+    }
+  });
+  // Also flash the snapshot bar
+  const snapItems = document.querySelectorAll('#inventorySnapshot .inv-item');
+  snapItems.forEach(item => {
+    if (item.querySelector('.inv-type')?.textContent === bloodType) {
+      item.style.background = 'rgba(59,130,246,0.08)';
+      item.style.borderRadius = '6px';
+      setTimeout(() => { item.style.background = ''; }, 1800);
+    }
+  });
 }
 
 async function filterRequests(val) {
