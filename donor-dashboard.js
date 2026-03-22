@@ -48,10 +48,55 @@ async function init() {
 
   document.getElementById('schDate').min = new Date().toISOString().split('T')[0];
 
-  await loadDonations();
+  await Promise.all([loadDonations(), loadProfile()]);
   renderCampsGrid();
   renderBadgesGrid();
   updateSchSummary();
+}
+
+async function loadProfile() {
+  try {
+    const res  = await apiRequest('/auth/me');
+    if (!res) return;
+    const json = await res.json();
+    const user = json.data?.user;
+    const prof = json.data?.profile;
+    if (!user) return;
+
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+    setVal('profName',   user.name);
+    setVal('profEmail',  user.email);
+
+    const btEl = document.getElementById('profBloodType');
+    if (btEl && user.blood_type) btEl.value = user.blood_type;
+
+    if (prof) {
+      setVal('profWeight', prof.weight_kg);
+      if (prof.date_of_birth) setVal('profDob', prof.date_of_birth.split('T')[0]);
+      const genderEl = document.getElementById('profGender');
+      if (genderEl && prof.gender) genderEl.value = prof.gender;
+    }
+
+    // Sync stats
+    const donated  = donations.filter(d => d.status === 'done').length;
+    setEl('statTotal',  donated);
+    setEl('statLives',  donated * 3);
+
+    // Update session
+    const updated = { ...sessionUser, name: user.name, blood_type: user.blood_type };
+    Tokens.setUser(updated);
+
+    const initials = user.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+    setEl('sideAvatar',       initials);
+    setEl('topbarAvatar',     initials);
+    setEl('profileAvatar',    initials);
+    setEl('sideName',         user.name);
+    setEl('topbarName',       user.name.split(' ')[0]);
+    setEl('profileName',      user.name);
+    setEl('profileEmail',     user.email);
+    setEl('profileBloodPill', user.blood_type || '—');
+    setEl('sideBloodType',    user.blood_type || '—');
+  } catch (e) { console.error('Profile load error', e); }
 }
 
 function setEl(id, val) {
