@@ -4,7 +4,7 @@
    ═══════════════════════════════════════════════ */
 
 // Change to your production URL when deploying
-const API = 'https://hemosync-backend-production.up.railway.app';
+const API = 'https://hemosync-backend-production.up.railway.app/api';
 
 // ── TOKEN STORAGE ──────────────────────────────────────────
 const Tokens = {
