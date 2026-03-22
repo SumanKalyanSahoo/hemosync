@@ -1,24 +1,14 @@
 /* ═══════════════════════════════════════════════
-   HemoSync — Donor Dashboard Logic
+   HemoSync — Donor Dashboard (API-wired)
+   Depends on: api-client.js loaded before this
    ═══════════════════════════════════════════════ */
 
-const params = new URLSearchParams(window.location.search);
-const donor = {
-  name:      params.get('name')  || 'Priya Mehta',
-  email:     params.get('email') || 'donor@gmail.com',
-  bloodType: params.get('blood') || 'B+',
-};
+if (!requireAuth()) { /* api-client.js redirects */ }
+const sessionUser = Tokens.getUser();
 
-const donations = [
-  { id:'DON-0841', blood:'B+', volume:'450 ml', component:'Whole Blood', centre:'Central Blood Bank, Indore',  date:'20 Jan 2025', status:'done'     },
-  { id:'DON-0792', blood:'B+', volume:'450 ml', component:'Whole Blood', centre:'AIIMS Blood Centre, Indore',  date:'12 Oct 2024', status:'done'     },
-  { id:'DON-0751', blood:'B+', volume:'450 ml', component:'Whole Blood', centre:'Red Cross Camp, Dewas',       date:'01 Jul 2024', status:'done'     },
-  { id:'DON-0708', blood:'B+', volume:'450 ml', component:'Platelets',   centre:'Bombay Hospital Blood Bank',  date:'03 Apr 2024', status:'done'     },
-  { id:'DON-0672', blood:'B+', volume:'450 ml', component:'Whole Blood', centre:'Central Blood Bank, Indore',  date:'10 Jan 2024', status:'done'     },
-  { id:'DON-0641', blood:'B+', volume:'450 ml', component:'Whole Blood', centre:'City Care Blood Centre',      date:'25 Sep 2023', status:'done'     },
-  { id:'DON-0601', blood:'B+', volume:'450 ml', component:'Whole Blood', centre:'Red Cross Camp, Indore',      date:'15 Apr 2023', status:'done'     },
-  { id:'SCH-0001', blood:'B+', volume:'450 ml', component:'Whole Blood', centre:'Central Blood Bank, Indore',  date:'28 Apr 2025', status:'upcoming' },
-];
+// ── STATE ──────────────────────────────────────
+let donations        = [];
+let selectedDonType  = 'Whole Blood';
 
 const camps = [
   { day:'26', mon:'Apr', name:'Indore Blood Donation Drive', location:'MG Road, Indore',    time:'9 AM – 5 PM',  org:'Red Cross Society',   slots:'open', slotsLeft:'18 slots open' },
@@ -30,67 +20,187 @@ const camps = [
 ];
 
 const badges = [
-  { icon:'🩸', name:'First Drop',     desc:'Completed your first donation',    earned:'Apr 2023',    locked:false },
-  { icon:'🔥', name:'On Fire',        desc:'3 consecutive donations',          earned:'Jan 2024',    locked:false },
-  { icon:'⭐', name:'Life Saver',     desc:'Potentially saved 10+ lives',      earned:'Oct 2024',    locked:false },
-  { icon:'🏅', name:'Gold Donor',     desc:'Reached 5 lifetime donations',     earned:'Jan 2025',    locked:false },
-  { icon:'🎖️', name:'Streak Master', desc:'6 donation streak achieved',       earned:'Jan 2025',    locked:false },
-  { icon:'🔬', name:'Platelet Hero',  desc:'Donated platelets via apheresis',  earned:'Apr 2024',    locked:false },
-  { icon:'💎', name:'Platinum Donor', desc:'Reach 10 lifetime donations',      earned:'3 more left', locked:true  },
-  { icon:'🏆', name:'Camp Champion',  desc:'Donated at 3 different camps',     earned:'1 more left', locked:true  },
+  { icon:'🩸', name:'First Drop',     desc:'Completed your first donation',   locked:false },
+  { icon:'🔥', name:'On Fire',        desc:'3 consecutive donations',         locked:false },
+  { icon:'⭐', name:'Life Saver',     desc:'Potentially saved 10+ lives',     locked:false },
+  { icon:'🏅', name:'Gold Donor',     desc:'Reached 5 lifetime donations',    locked:false },
+  { icon:'🎖️', name:'Streak Master', desc:'6 donation streak achieved',      locked:false },
+  { icon:'🔬', name:'Platelet Hero',  desc:'Donated platelets via apheresis', locked:false },
+  { icon:'💎', name:'Platinum Donor', desc:'Reach 10 lifetime donations',     locked:true  },
+  { icon:'🏆', name:'Camp Champion',  desc:'Donated at 3 different camps',    locked:true  },
 ];
 
-let selectedDonType = 'Whole Blood';
+// ── INIT ───────────────────────────────────────
+async function init() {
+  const user     = sessionUser || {};
+  const name     = user.name   || 'Donor';
+  const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
-function init() {
-  const initials = donor.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-
-  ['sideAvatar','topbarAvatar','profileAvatar'].forEach(id => {
-    const el = document.getElementById(id); if(el) el.textContent = initials;
-  });
-  document.getElementById('sideName').textContent         = donor.name;
-  document.getElementById('sideBloodType').textContent    = donor.bloodType;
-  document.getElementById('topbarName').textContent       = donor.name.split(' ')[0];
-  document.getElementById('profileName').textContent      = donor.name;
-  document.getElementById('profileEmail').textContent     = donor.email;
-  document.getElementById('profileBloodPill').textContent = donor.bloodType;
+  setEl('sideAvatar',          initials);
+  setEl('topbarAvatar',        initials);
+  setEl('profileAvatar',       initials);
+  setEl('sideName',            name);
+  setEl('topbarName',          name.split(' ')[0]);
+  setEl('profileName',         name);
+  setEl('profileEmail',        user.email || '');
+  setEl('profileBloodPill',    user.blood_type || '—');
+  setEl('sideBloodType',       user.blood_type || '—');
 
   document.getElementById('schDate').min = new Date().toISOString().split('T')[0];
 
-  renderFullDonTable();
+  await loadDonations();
   renderCampsGrid();
   renderBadgesGrid();
   updateSchSummary();
 }
 
-function showPage(id) {
-  document.querySelectorAll('.dash-page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item-hs').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-' + id).classList.add('active');
-  document.querySelectorAll('.nav-item-hs').forEach(n => {
-    if (n.getAttribute('onclick') && n.getAttribute('onclick').includes(`'${id}'`)) n.classList.add('active');
-  });
-  const titles = { schedule:'Schedule Donation', history:'Donation History', camps:'Nearby Camps', badges:'Badges & Rewards', profile:'My Profile' };
-  document.getElementById('topbarTitle').textContent = titles[id] || id;
-  document.getElementById('sidebar').classList.remove('open');
+function setEl(id, val) {
+  const el = document.getElementById(id); if (el) el.textContent = val;
+}
+
+// ── DONATIONS ──────────────────────────────────
+async function loadDonations() {
+  try {
+    const res  = await apiRequest('/donations');
+    if (!res) return;
+    const json = await res.json();
+    donations  = json.data || [];
+    renderFullDonTable();
+    updateDonStats();
+    setEl('histBadge', donations.length);
+  } catch (e) { console.error('Donations load failed', e); }
+}
+
+function updateDonStats() {
+  const done     = donations.filter(d => d.status === 'done').length;
+  const upcoming = donations.filter(d => d.status === 'scheduled').length;
+  setEl('statTotal',   done);
+  setEl('statLives',   done * 3);
+  setEl('statUpcoming',upcoming);
 }
 
 function renderFullDonTable() {
-  document.getElementById('fullDonTable').innerHTML = donations.map(d => `
+  const tbody = document.getElementById('fullDonTable');
+  if (!tbody) return;
+  tbody.innerHTML = donations.length ? donations.map(d => `
     <tr>
-      <td><span class="don-id">${d.id}</span></td>
-      <td><span class="blood-pill">${d.blood}</span></td>
-      <td style="color:var(--hs-text);font-weight:500;">${d.volume}</td>
-      <td style="color:var(--hs-text-2);font-size:0.76rem;">${d.component}</td>
-      <td style="color:var(--hs-text-2);font-size:0.76rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.centre}</td>
-      <td style="color:var(--hs-text-3);font-size:0.72rem;">${d.date}</td>
-      <td><span class="don-status ${d.status==='done'?'ds-done':d.status==='upcoming'?'ds-upcoming':'ds-pending'}">${d.status==='done'?'Done':d.status==='upcoming'?'Upcoming':'Pending'}</span></td>
-      <td>${d.status==='done'?`<button class="panel-action" style="font-size:0.68rem;" onclick="showToast('📄','Certificate','Downloading ${d.id} certificate...')"><i class="bi bi-download"></i></button>`:'—'}</td>
-    </tr>`).join('');
+      <td><span class="don-id">${d.donation_number}</span></td>
+      <td><span class="blood-pill">${d.blood_type}</span></td>
+      <td style="color:var(--hs-text);font-weight:500;">${d.volume_ml || 450} ml</td>
+      <td style="color:var(--hs-text-2);font-size:0.76rem;">${d.donation_type}</td>
+      <td style="color:var(--hs-text-2);font-size:0.76rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.centre_name}</td>
+      <td style="color:var(--hs-text-3);font-size:0.72rem;">${d.appointment_date}</td>
+      <td><span class="don-status ${d.status==='done'?'ds-done':d.status==='scheduled'?'ds-upcoming':'ds-pending'}">${d.status==='done'?'Done':d.status==='scheduled'?'Upcoming':'Cancelled'}</span></td>
+      <td>${d.status==='done'
+        ? `<button class="panel-action" style="font-size:0.68rem;" onclick="showToast('📄','Certificate','Downloading ${d.donation_number}...')"><i class="bi bi-download"></i></button>`
+        : d.status==='scheduled'
+          ? `<button class="panel-action" style="font-size:0.68rem;color:var(--hs-red);" onclick="cancelDonation('${d.id}')">Cancel</button>`
+          : '—'}</td>
+    </tr>`).join('') : `<tr><td colspan="8" style="padding:24px;text-align:center;color:var(--hs-text-3);font-size:0.82rem;"><i class="bi bi-inbox" style="display:block;font-size:1.4rem;margin-bottom:8px;opacity:0.4"></i>No donations yet — schedule your first one!</td></tr>`;
 }
 
+async function cancelDonation(id) {
+  if (!confirm('Cancel this appointment?')) return;
+  try {
+    const res  = await apiRequest(`/donations/${id}`, { method: 'DELETE' });
+    if (!res) return;
+    const json = await res.json();
+    if (json.success) { showToast('✅','Appointment Cancelled',''); await loadDonations(); }
+    else showToast('❌','Error', json.message);
+  } catch { showToast('❌','Error','Could not cancel appointment'); }
+}
+
+// ── SCHEDULE ───────────────────────────────────
+function selectDonType(type) {
+  selectedDonType = type;
+  const whole    = document.getElementById('dtWhole');
+  const platelets= document.getElementById('dtPlatelets');
+  if (whole && platelets) {
+    if (type === 'Whole Blood') {
+      whole.style.cssText    = 'background:var(--hs-red-subtle);border:1px solid var(--hs-red-border);border-radius:8px;padding:10px;cursor:pointer;text-align:center;';
+      platelets.style.cssText= 'background:var(--hs-bg2);border:1px solid var(--hs-border);border-radius:8px;padding:10px;cursor:pointer;text-align:center;';
+      whole.querySelector('div:nth-child(2)').style.color    = 'var(--hs-red)';
+      platelets.querySelector('div:nth-child(2)').style.color= 'var(--hs-text-2)';
+    } else {
+      platelets.style.cssText= 'background:var(--hs-blue-bg);border:1px solid rgba(59,130,246,0.3);border-radius:8px;padding:10px;cursor:pointer;text-align:center;';
+      whole.style.cssText    = 'background:var(--hs-bg2);border:1px solid var(--hs-border);border-radius:8px;padding:10px;cursor:pointer;text-align:center;';
+      platelets.querySelector('div:nth-child(2)').style.color= 'var(--hs-blue)';
+      whole.querySelector('div:nth-child(2)').style.color    = 'var(--hs-text-2)';
+    }
+  }
+  updateSchSummary();
+}
+
+function updateSchSummary() {
+  const date   = document.getElementById('schDate')?.value;
+  const time   = document.getElementById('schTime')?.value;
+  const centre = document.getElementById('schCentre')?.value;
+  const rows   = [
+    ['Donor',     sessionUser?.name || ''],
+    ['Blood Type', sessionUser?.blood_type || '—'],
+    ['Date',      date   || '—'],
+    ['Time',      time   || '—'],
+    ['Centre',    centre || '—'],
+    ['Type',      selectedDonType],
+    ['Duration',  selectedDonType === 'Whole Blood' ? '~10 minutes' : '~90 minutes'],
+  ];
+  const el = document.getElementById('schSummaryRows');
+  if (el) el.innerHTML = rows.map(([l, v]) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid var(--hs-border2);font-size:0.8rem;">
+      <span style="color:var(--hs-text-3);">${l}</span>
+      <span style="font-weight:500;color:${l==='Blood Type'?'var(--hs-red)':'var(--hs-text)'}">${v}</span>
+    </div>`).join('');
+}
+
+async function submitSchedule() {
+  const date   = document.getElementById('schDate')?.value;
+  const time   = document.getElementById('schTime')?.value;
+  const centre = document.getElementById('schCentre')?.value;
+  const notes  = document.getElementById('schNotes')?.value;
+
+  if (!date || !time || !centre) {
+    showToast('⚠️', 'Missing Fields', 'Please select date, time, and donation centre.');
+    return;
+  }
+
+  const btn = document.querySelector('#page-schedule .btn-hs-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Booking...'; }
+
+  try {
+    const res  = await apiRequest('/donations', {
+      method: 'POST',
+      body:   JSON.stringify({
+        centre_name:      centre,
+        appointment_date: date,
+        appointment_time: time,
+        donation_type:    selectedDonType,
+        health_notes:     notes || undefined,
+      }),
+    });
+    if (!res) return;
+    const json = await res.json();
+    if (!json.success) { showToast('❌', 'Error', json.message); return; }
+
+    showToast('✅', 'Appointment Confirmed!', `Booked at ${centre.split(',')[0]} on ${date} at ${time}`);
+    clearSchedule();
+    await loadDonations();
+    showPage('history');
+  } catch { showToast('❌', 'Error', 'Could not book appointment'); }
+  finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-calendar-check"></i> Confirm Appointment'; } }
+}
+
+function clearSchedule() {
+  ['schDate','schTime','schCentre','schNotes'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  updateSchSummary();
+}
+
+// ── CAMPS ──────────────────────────────────────
 function renderCampsGrid() {
-  document.getElementById('campsGrid').innerHTML = camps.map(c => `
+  const el = document.getElementById('campsGrid');
+  if (!el) return;
+  el.innerHTML = camps.map(c => `
     <div class="col-md-6 col-lg-4">
       <div class="camp-card">
         <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;">
@@ -104,7 +214,10 @@ function renderCampsGrid() {
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <span class="camp-slots slots-${c.slots}">${c.slotsLeft}</span>
-          <button class="btn-hs-primary" style="padding:5px 12px;font-size:0.72rem;" onclick="${c.slots==='full' ? "showToast('⏳','Waitlist','You have been added to the waitlist.')" : `showPage('schedule');showToast('📍','Camp Selected','Booking at ${c.name}')`}">
+          <button class="btn-hs-primary" style="padding:5px 12px;font-size:0.72rem;"
+            onclick="${c.slots==='full'
+              ? "showToast('⏳','Waitlist','You have been added to the waitlist.')"
+              : `showPage('schedule');document.getElementById('schCentre').value='${c.name}';updateSchSummary();showToast('📍','Camp Selected','Centre pre-filled in the form.')`}">
             ${c.slots==='full'?'Join Waitlist':'Register'}
           </button>
         </div>
@@ -112,127 +225,83 @@ function renderCampsGrid() {
     </div>`).join('');
 }
 
+// ── BADGES ─────────────────────────────────────
 function renderBadgesGrid() {
-  document.getElementById('badgesGrid').innerHTML = badges.map(b => `
+  const el = document.getElementById('badgesGrid');
+  if (!el) return;
+  el.innerHTML = badges.map(b => `
     <div class="col-6 col-md-4 col-lg-3">
       <div class="badge-card ${b.locked?'locked':''}">
         <div class="badge-icon">${b.icon}</div>
         <div class="badge-name">${b.name}</div>
         <div class="badge-desc">${b.desc}</div>
         <div class="badge-earned" style="color:${b.locked?'var(--hs-text-3)':'var(--hs-green)'};">
-          ${b.locked?`🔒 ${b.earned}`:`✓ Earned ${b.earned}`}
+          ${b.locked ? '🔒 Locked' : '✓ Earned'}
         </div>
       </div>
     </div>`).join('');
 }
 
-// ── SCHEDULE ──
-function selectDonType(type) {
-  selectedDonType = type;
-  const whole    = document.getElementById('dtWhole');
-  const platelets = document.getElementById('dtPlatelets');
-  if (type === 'Whole Blood') {
-    whole.style.cssText    = 'background:var(--hs-red-subtle);border:1px solid var(--hs-red-border);border-radius:8px;padding:10px;cursor:pointer;text-align:center;';
-    platelets.style.cssText = 'background:var(--hs-bg2);border:1px solid var(--hs-border);border-radius:8px;padding:10px;cursor:pointer;text-align:center;';
-    whole.querySelector('div:nth-child(2)').style.color    = 'var(--hs-red)';
-    platelets.querySelector('div:nth-child(2)').style.color = 'var(--hs-text-2)';
-  } else {
-    platelets.style.cssText = 'background:var(--hs-blue-bg);border:1px solid rgba(59,130,246,0.3);border-radius:8px;padding:10px;cursor:pointer;text-align:center;';
-    whole.style.cssText    = 'background:var(--hs-bg2);border:1px solid var(--hs-border);border-radius:8px;padding:10px;cursor:pointer;text-align:center;';
-    platelets.querySelector('div:nth-child(2)').style.color = 'var(--hs-blue)';
-    whole.querySelector('div:nth-child(2)').style.color    = 'var(--hs-text-2)';
-  }
-  updateSchSummary();
-}
+// ── PROFILE ────────────────────────────────────
+async function saveProfile() {
+  const name   = document.getElementById('profName')?.value.trim();
+  const blood  = document.getElementById('profBloodType')?.value;
+  const weight = document.getElementById('profWeight')?.value;
+  const btn    = document.querySelector('#page-profile .btn-hs-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
 
-function updateSchSummary() {
-  const date   = document.getElementById('schDate').value;
-  const time   = document.getElementById('schTime').value;
-  const centre = document.getElementById('schCentre').value;
-  const rows = [
-    ['Donor',     donor.name],
-    ['Blood Type', donor.bloodType],
-    ['Date',      date   || '—'],
-    ['Time',      time   || '—'],
-    ['Centre',    centre || '—'],
-    ['Type',      selectedDonType],
-    ['Duration',  selectedDonType==='Whole Blood'?'~10 minutes':'~90 minutes'],
-  ];
-  document.getElementById('schSummaryRows').innerHTML = rows.map(([label, val]) => `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 18px;border-bottom:1px solid var(--hs-border2);font-size:0.8rem;">
-      <span style="color:var(--hs-text-3);">${label}</span>
-      <span style="font-weight:500;color:${label==='Blood Type'?'var(--hs-red)':'var(--hs-text)'}">${val}</span>
-    </div>`).join('');
-}
-
-function submitSchedule() {
-  const date   = document.getElementById('schDate').value;
-  const time   = document.getElementById('schTime').value;
-  const centre = document.getElementById('schCentre').value;
-  if (!date || !time || !centre) { showToast('⚠️', 'Missing Fields', 'Please select date, time, and donation centre.'); return; }
-  showToast('✅', 'Appointment Confirmed!', `Booked at ${centre.split(',')[0]} on ${date} at ${time}`);
-  clearSchedule();
-  showPage('history');
-}
-
-function clearSchedule() {
-  document.getElementById('schDate').value = '';
-  document.getElementById('schTime').value = '';
-  document.getElementById('schCentre').value = '';
-  document.getElementById('schNotes').value = '';
-  updateSchSummary();
-}
-
-// ── PROFILE ──
-function updateBloodType(val) {
-  document.getElementById('sideBloodType').textContent    = val;
-  document.getElementById('profileBloodPill').textContent = val;
-  donor.bloodType = val;
-}
-
-function saveProfile() {
-  const name = document.getElementById('profName').value.trim();
-  if (name) {
-    document.getElementById('sideName').textContent    = name;
-    document.getElementById('topbarName').textContent  = name.split(' ')[0];
-    document.getElementById('profileName').textContent = name;
-    const ini = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    ['sideAvatar','topbarAvatar','profileAvatar'].forEach(id => {
-      const el = document.getElementById(id); if(el) el.textContent = ini;
+  try {
+    // Update base user
+    const res1 = await apiRequest('/users/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ name, blood_type: blood }),
     });
-  }
-  showToast('✅', 'Profile Updated', 'Your donor profile has been saved.');
+    // Update donor profile
+    const res2 = await apiRequest('/users/me/donor-profile', {
+      method: 'PATCH',
+      body: JSON.stringify({ weight_kg: weight ? parseFloat(weight) : undefined }),
+    });
+
+    if (!res1 || !res2) return;
+    const json1 = await res1.json();
+    if (!json1.success) { showToast('❌','Error', json1.message); return; }
+
+    const updated = { ...sessionUser, name: json1.data.name, blood_type: json1.data.blood_type };
+    Tokens.setUser(updated);
+    setEl('sideName',       updated.name);
+    setEl('topbarName',     updated.name.split(' ')[0]);
+    setEl('profileName',    updated.name);
+    setEl('profileBloodPill', updated.blood_type);
+    setEl('sideBloodType',  updated.blood_type);
+    showToast('✅','Profile Updated','Your donor profile has been saved.');
+  } catch { showToast('❌','Error','Could not save profile'); }
+  finally { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg"></i> Save Changes'; } }
 }
 
-// ── LOGOUT ──
-function handleLogout() {
-  apiLogout();  // clears tokens + redirects to index.html
+function updateBloodType(val) {
+  setEl('sideBloodType',    val);
+  setEl('profileBloodPill', val);
 }
 
-// ── MOBILE ──
-function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+// ── HELPERS ────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.dash-page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item-hs').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id)?.classList.add('active');
+  document.querySelectorAll('.nav-item-hs').forEach(n => {
+    if (n.getAttribute('onclick')?.includes(`'${id}'`)) n.classList.add('active');
+  });
+  const titles = { schedule:'Schedule Donation', history:'Donation History', camps:'Nearby Camps', badges:'Badges & Rewards', profile:'My Profile' };
+  setEl('topbarTitle', titles[id] || id);
+  document.getElementById('sidebar')?.classList.remove('open');
 
-// ── TOAST ──
-function showToast(icon, title, msg) {
-  const container = document.getElementById('toastContainer');
-  const id = 'toast-' + Date.now();
-  container.insertAdjacentHTML('beforeend', `
-    <div id="${id}" class="toast align-items-center border-0 mb-2" role="alert"
-         style="background:var(--hs-surface);border:1px solid var(--hs-border)!important;border-radius:10px;min-width:290px">
-      <div class="d-flex">
-        <div class="toast-body d-flex align-items-start gap-3 py-3 px-3">
-          <span style="font-size:1rem">${icon}</span>
-          <div>
-            <div style="font-weight:600;font-size:0.83rem;color:#F4F4F5">${title}</div>
-            <div style="font-size:0.75rem;color:var(--hs-text-2);margin-top:1px">${msg}</div>
-          </div>
-        </div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-      </div>
-    </div>`);
-  const el = document.getElementById(id);
-  new bootstrap.Toast(el, { delay: 4200 }).show();
-  el.addEventListener('hidden.bs.toast', () => el?.remove());
+  if (id === 'history')  loadDonations();
+  if (id === 'schedule') { updateSchSummary(); }
+  if (id === 'camps')    renderCampsGrid();
+  if (id === 'badges')   renderBadgesGrid();
 }
+
+function handleLogout() { apiLogout(); }
+function toggleSidebar() { document.getElementById('sidebar')?.classList.toggle('open'); }
 
 init();
