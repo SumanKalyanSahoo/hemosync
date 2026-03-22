@@ -4,8 +4,10 @@
    ═══════════════════════════════════════════════ */
 
 // ── API BASE URL ───────────────────────────────────────────
-// Change this to your deployed backend URL in production
-const API = 'https://hemosync-backend-production.up.railway.app/api';
+// Railway URL — NO trailing slash, must end with /api
+const _RAW_API = 'https://hemosync-backend-production.up.railway.app/api';
+// Strip any accidental trailing slash so paths never get a double //
+const API = _RAW_API.replace(/\/+$/, '');
 
 // ── TOKEN HELPERS ──────────────────────────────────────────
 const Tokens = {
@@ -244,6 +246,17 @@ function renderMyRequests() {
 }
 
 // ── AUTH ───────────────────────────────────────────────────
+// Build the correct dashboard URL for a given user object
+function getDashboardUrl(user) {
+  const base = encodeURIComponent(user.name);
+  const email = user.email;
+  const blood = encodeURIComponent(user.blood_type || '');
+  if (user.role === 'hospital')   return `hospital-dashboard.html?name=${base}&email=${email}`;
+  if (user.role === 'donor')      return `donor-dashboard.html?name=${base}&email=${email}&blood=${blood}`;
+  if (user.role === 'individual') return `individual-dashboard.html?name=${base}&email=${email}&blood=${blood}`;
+  return null;
+}
+
 async function handleLogin() {
   const emailInput = document.querySelector('#tab-login input[type="email"]');
   const passInput  = document.querySelector('#tab-login input[type="password"]');
@@ -272,32 +285,30 @@ async function handleLogin() {
     Tokens.set(accessToken, refreshToken);
     Tokens.setUser(user);
     currentUser = user;
-    bsModal.hide();
 
     const firstName = user.name.split(' ')[0];
 
-    if (user.role === 'hospital') {
-      showToast('🏥', `Welcome, ${firstName}!`, 'Redirecting to Hospital Dashboard...');
-      setTimeout(() => {
-        window.location.href = `hospital-dashboard.html?name=${encodeURIComponent(user.name)}&email=${user.email}`;
-      }, 900);
-      return;
-    }
-    if (user.role === 'donor') {
-      showToast('❤️', `Welcome, ${firstName}!`, 'Redirecting to Donor Dashboard...');
-      setTimeout(() => {
-        window.location.href = `donor-dashboard.html?name=${encodeURIComponent(user.name)}&email=${user.email}&blood=${encodeURIComponent(user.blood_type || 'B+')}`;
-      }, 900);
-      return;
-    }
-    if (user.role === 'individual') {
-      showToast('👤', `Welcome, ${firstName}!`, 'Redirecting to your dashboard...');
-      setTimeout(() => {
-        window.location.href = `individual-dashboard.html?name=${encodeURIComponent(user.name)}&email=${user.email}&blood=${encodeURIComponent(user.blood_type || 'O+')}`;
-      }, 900);
+    // Build the destination URL before touching the modal
+    const dest = getDashboardUrl(user);
+
+    if (dest) {
+      // Show toast, hide modal, then redirect immediately after modal animation ends
+      showToast('👋', `Welcome, ${firstName}!`, 'Taking you to your dashboard...');
+      const modalEl = document.getElementById('authModal');
+      if (bsModal) {
+        // Listen for modal fully hidden, then navigate
+        modalEl.addEventListener('hidden.bs.modal', () => {
+          window.location.href = dest;
+        }, { once: true });
+        bsModal.hide();
+      } else {
+        window.location.href = dest;
+      }
       return;
     }
 
+    // Fallback: no dashboard for this role — stay on landing page
+    if (bsModal) bsModal.hide();
     updateNavForUser(user);
     updateOrderSection(user);
     emailInput.value = '';
@@ -343,11 +354,26 @@ async function handleRegister() {
     Tokens.set(accessToken, refreshToken);
     Tokens.setUser(user);
     currentUser = user;
-    bsModal.hide();
+
+    const dest = getDashboardUrl(user);
+    showToast('🎉', 'Account Created!', `Welcome, ${name.split(' ')[0]}! Taking you to your dashboard...`);
+    nameInput.value = ''; emailInput.value = ''; passInput.value = '';
+
+    if (dest) {
+      const modalEl = document.getElementById('authModal');
+      if (bsModal) {
+        modalEl.addEventListener('hidden.bs.modal', () => {
+          window.location.href = dest;
+        }, { once: true });
+        bsModal.hide();
+      } else {
+        window.location.href = dest;
+      }
+      return;
+    }
+    if (bsModal) bsModal.hide();
     updateNavForUser(user);
     updateOrderSection(user);
-    showToast('🎉', 'Account Created!', `Welcome to HemoSync, ${name.split(' ')[0]}!`);
-    nameInput.value = ''; emailInput.value = ''; passInput.value = '';
   } catch {
     showToast('❌', 'Network Error', 'Could not reach the server.');
   } finally {
@@ -469,8 +495,13 @@ window.addEventListener('scroll', () => {
 
 // ── INIT ───────────────────────────────────────────────────
 (async function init() {
-  // Restore session if token exists
+  // If user is already logged in, send them straight to their dashboard
   if (Tokens.getAccess() && currentUser) {
+    const dest = getDashboardUrl(currentUser);
+    if (dest) {
+      window.location.href = dest;
+      return;   // stop — don't render the landing page at all
+    }
     updateNavForUser(currentUser);
     updateOrderSection(currentUser);
   } else {
