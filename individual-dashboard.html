@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HemoSync — My Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="hemosync.css"/>
+  <style>
+    .avail-card {
+      background: var(--hs-bg2); border: 1px solid var(--hs-border2);
+      border-radius: 8px; padding: 9px 6px; text-align: center;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .avail-card:hover { border-color: var(--hs-border); }
+    .avail-card.sel { border-color: var(--hs-red) !important; background: var(--hs-red-subtle); }
+    .avail-type { font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 800; margin-bottom: 3px; }
+    .avail-units { font-size: 0.62rem; color: var(--hs-text-3); margin-bottom: 5px; }
+    .avail-chip { font-size: 0.58rem; font-weight: 600; padding: 2px 6px; border-radius: 100px; text-transform: uppercase; }
+
+    .contact-card {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--hs-surface); border: 1px solid var(--hs-border2);
+      border-radius: 9px; padding: 14px 16px; margin-bottom: 8px;
+    }
+    .contact-avatar {
+      width: 36px; height: 36px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.72rem; font-weight: 700; color: white; flex-shrink: 0;
+    }
+    .contact-name { font-size: 0.84rem; font-weight: 600; }
+    .contact-rel  { font-size: 0.7rem; color: var(--hs-text-3); margin-top: 1px; }
+    .contact-phone { font-size: 0.72rem; color: var(--hs-text-2); margin-top: 2px; }
+    .contact-call {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--hs-green-bg); border: 1px solid rgba(22,163,74,0.2);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--hs-green); cursor: pointer; transition: all 0.12s; flex-shrink: 0;
+    }
+    .contact-call:hover { background: rgba(22,163,74,0.15); }
+
+    .tracker-step { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--hs-border2); }
+    .tracker-step:last-child { border-bottom: none; }
+    .step-circle {
+      width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
+    }
+    .step-done    { background: var(--hs-green-bg); border: 2px solid rgba(22,163,74,0.4); color: var(--hs-green); }
+    .step-active  { background: var(--hs-blue-bg); border: 2px solid rgba(59,130,246,0.4); color: var(--hs-blue); animation: blink 1.5s infinite; }
+    .step-pending { background: var(--hs-bg2); border: 2px solid var(--hs-border); color: var(--hs-text-3); }
+    .step-label { font-size: 0.82rem; font-weight: 600; }
+    .step-sub   { font-size: 0.72rem; color: var(--hs-text-3); margin-top: 2px; }
+    .step-time  { font-size: 0.68rem; color: var(--hs-text-3); margin-top: 2px; }
+
+    .sos-btn {
+      width: 100%; padding: 9px; margin-top: 10px;
+      background: var(--hs-red-subtle); border: 1px solid var(--hs-red-border);
+      border-radius: 8px; color: var(--hs-red); font-size: 0.78rem; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; font-family: 'DM Sans', sans-serif;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .sos-btn:hover { background: rgba(232,33,42,0.14); }
+
+    .emergency-card {
+      background: linear-gradient(135deg, rgba(232,33,42,0.06) 0%, rgba(59,130,246,0.04) 100%);
+      border: 1px solid var(--hs-red-border); border-radius: 12px; padding: 22px 24px;
+    }
+    .emergency-title { font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 800; margin-bottom: 8px; }
+    .emergency-sub { font-size: 0.82rem; color: var(--hs-text-2); line-height: 1.6; margin-bottom: 16px; max-width: 500px; }
+
+    .bank-card { background: var(--hs-surface); border: 1px solid var(--hs-border2); border-radius: 10px; padding: 16px; height: 100%; }
+    .bank-name { font-size: 0.88rem; font-weight: 700; margin-bottom: 4px; }
+    .bank-meta { font-size: 0.72rem; color: var(--hs-text-3); margin-bottom: 2px; }
+    .bank-open { font-size: 0.62rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; text-transform: uppercase; }
+    .bank-open.open   { background: var(--hs-green-bg); color: var(--hs-green); border: 1px solid rgba(22,163,74,0.2); }
+    .bank-open.closed { background: var(--hs-red-subtle); color: var(--hs-red); border: 1px solid var(--hs-red-border); }
+  </style>
+</head>
+<body>
+
+<div class="sidebar-toggle" onclick="toggleSidebar()" id="sidebarToggle">
+  <i class="bi bi-list"></i>
+</div>
+
+<div class="dash-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <a class="sidebar-logo" href="index.html">
+      <div class="sidebar-logo-mark">
+        <svg viewBox="0 0 14 16" xmlns="http://www.w3.org/2000/svg"><path d="M7 0C7 0 1 6.5 1 10.5a6 6 0 0 0 12 0C13 6.5 7 0 7 0z"/></svg>
+      </div>
+      <span class="sidebar-logo-text">Hemo<span>Sync</span></span>
+    </a>
+
+    <div class="sidebar-badge">
+      <div class="badge-avatar" id="sideAvatar">AS</div>
+      <div>
+        <div class="badge-name" id="sideName">Arjun Sharma</div>
+        <div class="badge-role">Individual Account</div>
+        <div class="badge-verified">Verified</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">My Dashboard</div>
+      <a class="nav-item-hs active" onclick="showPage('request')" href="#">
+        <i class="bi bi-droplet"></i> Request Blood
+        <span class="nav-badge" id="activeReqBadge" style="display:none;">1</span>
+      </a>
+      <a class="nav-item-hs" onclick="showPage('tracker')" href="#">
+        <i class="bi bi-geo"></i> Track Request
+      </a>
+      <a class="nav-item-hs" onclick="showPage('history')" href="#">
+        <i class="bi bi-clock-history"></i> Request History
+        <span class="nav-badge" id="histBadge">4</span>
+      </a>
+
+      <div class="nav-section-label" style="margin-top:8px;">Health & Safety</div>
+      <a class="nav-item-hs" onclick="showPage('contacts')" href="#">
+        <i class="bi bi-people"></i> Emergency Contacts
+        <span class="nav-badge amber">3</span>
+      </a>
+
+      <div class="nav-section-label" style="margin-top:8px;">Account</div>
+      <a class="nav-item-hs" onclick="showPage('profile')" href="#">
+        <i class="bi bi-person-circle"></i> My Profile
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="logout-btn" onclick="handleLogout()">
+        <i class="bi bi-box-arrow-left"></i> Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="dash-main">
+
+    <div class="dash-topbar">
+      <div>
+        <div class="topbar-title" id="topbarTitle">Request Blood</div>
+        <div class="topbar-breadcrumb">HemoSync / My Dashboard</div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-icon-btn">
+          <i class="bi bi-bell"></i><span class="notif-dot"></span>
+        </div>
+        <div class="topbar-icon-btn" onclick="triggerSOS()" title="SOS Emergency">
+          <i class="bi bi-exclamation-octagon" style="color:var(--hs-red)"></i>
+        </div>
+        <div style="width:1px;height:22px;background:var(--hs-border2);margin:0 4px;"></div>
+        <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" onclick="showPage('profile')">
+          <div style="width:28px;height:28px;background:var(--hs-red);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.68rem;font-weight:700;color:white;" id="topbarAvatar">AS</div>
+          <span style="font-size:0.78rem;font-weight:500;" id="topbarName">Arjun</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: REQUEST BLOOD -->
+    <div class="dash-page active" id="page-request">
+      <div class="mb-4">
+        <h2 style="font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;margin-bottom:2px;">Request Blood</h2>
+        <div style="font-size:0.76rem;color:var(--hs-text-3);">Submit a blood requirement — response within 30 minutes</div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="panel">
+            <div class="panel-header">
+              <div><div class="panel-title">Request Details</div><div class="panel-sub">Fill all required fields</div></div>
+              <span style="background:var(--hs-green-bg);color:var(--hs-green);border:1px solid rgba(22,163,74,0.18);border-radius:100px;font-size:0.62rem;font-weight:700;padding:2px 9px;">
+                <i class="bi bi-shield-check me-1"></i>Verified Account
+              </span>
+            </div>
+            <div class="panel-body">
+              <div style="background:var(--hs-blue-bg);border:1px solid rgba(59,130,246,0.18);border-radius:8px;padding:10px 13px;margin-bottom:18px;display:flex;align-items:center;gap:9px;">
+                <i class="bi bi-person-check-fill" style="color:var(--hs-blue);font-size:0.9rem;flex-shrink:0;"></i>
+                <div>
+                  <div style="font-size:0.76rem;font-weight:600;">Profile auto-filled · <span id="reqAutoFillName">Arjun Sharma</span></div>
+                  <div style="font-size:0.68rem;color:var(--hs-text-3);margin-top:1px;">Blood type <span id="reqAutoFillBlood" style="color:var(--hs-red);font-weight:700;">O+</span> from your profile</div>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label-hs">Blood Type Required *</label>
+                <div class="row g-2" id="bloodTypePicker"></div>
+              </div>
+
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <label class="form-label-hs">Number of Units *</label>
+                  <input type="number" class="form-control-hs" id="reqUnits" min="1" max="20" placeholder="e.g. 2" oninput="updateReqSummary()"/>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label-hs">Component Type</label>
+                  <select class="form-select-hs" id="reqComponent" onchange="updateReqSummary()">
+                    <option>Whole Blood</option>
+                    <option>Packed Red Blood Cells (PRBC)</option>
+                    <option>Fresh Frozen Plasma (FFP)</option>
+                    <option>Platelets</option>
+                    <option>Cryoprecipitate</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label-hs">Urgency Level *</label>
+                <div class="d-flex gap-2">
+                  <button class="urg-btn an" onclick="setReqUrgency(this,'Normal')">🟢 Normal</button>
+                  <button class="urg-btn" onclick="setReqUrgency(this,'Urgent')">🟡 Urgent</button>
+                  <button class="urg-btn" onclick="setReqUrgency(this,'Critical')">🔴 Critical</button>
+                </div>
+              </div>
+
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <label class="form-label-hs">Patient Name</label>
+                  <input class="form-control-hs" id="reqPatient" placeholder="Full name of patient"/>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label-hs">Contact Number *</label>
+                  <input type="tel" class="form-control-hs" id="reqPhone" placeholder="+91 98765 43210"/>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label-hs">Hospital / Delivery Address *</label>
+                <input class="form-control-hs" id="reqAddress" placeholder="Hospital name, ward, city"/>
+              </div>
+
+              <div class="mb-4">
+                <label class="form-label-hs">Additional Notes</label>
+                <textarea class="form-control-hs" id="reqNotes" rows="2" placeholder="Cross-match details, special requirements..."></textarea>
+              </div>
+
+              <div class="d-flex gap-2">
+                <button class="btn-hs-primary flex-fill" onclick="submitRequest()">
+                  <i class="bi bi-send-fill"></i> Submit Request
+                </button>
+                <button class="btn-hs-secondary" onclick="clearReqForm()">
+                  <i class="bi bi-x"></i> Clear
+                </button>
+              </div>
+
+              <!-- SOS -->
+              <button class="sos-btn" onclick="triggerSOS()">
+                <i class="bi bi-exclamation-octagon-fill"></i> SOS Emergency Request
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-5">
+          <div class="panel mb-3">
+            <div class="panel-header"><div class="panel-title">Request Summary</div></div>
+            <div id="reqSummaryRows"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Availability Check</div>
+              <div class="panel-sub">Stock for selected type</div>
+            </div>
+            <div class="panel-body" id="reqAvailPanel">
+              <div style="text-align:center;padding:16px;color:var(--hs-text-3);font-size:0.78rem;">
+                <i class="bi bi-droplet" style="display:block;font-size:1.3rem;margin-bottom:6px;opacity:0.3;"></i>
+                Select a blood type above
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: TRACK REQUEST -->
+    <div class="dash-page" id="page-tracker">
+      <div class="mb-4">
+        <h2 style="font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;margin-bottom:2px;">Track Request</h2>
+        <div style="font-size:0.76rem;color:var(--hs-text-3);">Live status of your active blood request</div>
+      </div>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="panel mb-3">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">REQ-2091 — Active</div>
+                <div class="panel-sub">Submitted today at 10:24 AM</div>
+              </div>
+              <span class="status-badge sb-enroute">En Route</span>
+            </div>
+            <div style="padding:2px 0;">
+              <div style="display:flex;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--hs-border2);font-size:0.8rem;"><span style="color:var(--hs-text-3);">Blood Type</span><span class="blood-pill">O+</span></div>
+              <div style="display:flex;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--hs-border2);font-size:0.8rem;"><span style="color:var(--hs-text-3);">Units</span><span style="font-weight:600;">2 units</span></div>
+              <div style="display:flex;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--hs-border2);font-size:0.8rem;"><span style="color:var(--hs-text-3);">Component</span><span style="font-weight:500;">PRBC</span></div>
+              <div style="display:flex;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--hs-border2);font-size:0.8rem;"><span style="color:var(--hs-text-3);">Urgency</span><span class="urgency-pill up-urgent">Urgent</span></div>
+              <div style="display:flex;justify-content:space-between;padding:10px 18px;font-size:0.8rem;"><span style="color:var(--hs-text-3);">Est. Arrival</span><span style="font-weight:600;color:var(--hs-green);">~12 minutes</span></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Live Status</div>
+              <div style="display:flex;align-items:center;gap:5px;font-size:0.7rem;color:var(--hs-green);">
+                <span style="width:5px;height:5px;border-radius:50%;background:var(--hs-green);animation:blink 1.5s infinite;"></span>
+                Updating live
+              </div>
+            </div>
+            <div class="panel-body" style="padding:6px 18px 14px;">
+              <div class="tracker-step">
+                <div class="step-circle step-done"><i class="bi bi-check"></i></div>
+                <div><div class="step-label">Request Submitted</div><div class="step-sub">Received by HemoSync</div><div class="step-time">10:24 AM · Today</div></div>
+              </div>
+              <div class="tracker-step">
+                <div class="step-circle step-done"><i class="bi bi-check"></i></div>
+                <div><div class="step-label">Request Verified</div><div class="step-sub">Eligibility & details confirmed</div><div class="step-time">10:27 AM · Today</div></div>
+              </div>
+              <div class="tracker-step">
+                <div class="step-circle step-done"><i class="bi bi-check"></i></div>
+                <div><div class="step-label">Blood Bank Assigned</div><div class="step-sub">Central Blood Bank, Indore accepted</div><div class="step-time">10:31 AM · Today</div></div>
+              </div>
+              <div class="tracker-step">
+                <div class="step-circle step-active"><i class="bi bi-truck"></i></div>
+                <div><div class="step-label" style="color:var(--hs-blue);">En Route — Driver dispatched</div><div class="step-sub">Vehicle is on the way</div><div class="step-time">10:38 AM · Est. arrival ~12 min</div></div>
+              </div>
+              <div class="tracker-step">
+                <div class="step-circle step-pending"></div>
+                <div><div class="step-label" style="color:var(--hs-text-3);">Delivered</div><div class="step-sub" style="color:var(--hs-text-3);">Blood units handed over at destination</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-5">
+          <div class="panel mb-3">
+            <div class="panel-header"><div class="panel-title">Dispatching Blood Bank</div></div>
+            <div class="panel-body">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+                <div style="width:40px;height:40px;background:var(--hs-red-subtle);border:1px solid var(--hs-red-border);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;">🏥</div>
+                <div>
+                  <div style="font-size:0.86rem;font-weight:700;">Central Blood Bank</div>
+                  <div style="font-size:0.7rem;color:var(--hs-text-3);">Indore, Madhya Pradesh</div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:7px;">
+                <div style="display:flex;justify-content:space-between;font-size:0.78rem;"><span style="color:var(--hs-text-3);">Driver</span><span style="font-weight:600;">Ramesh Kumar</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:0.78rem;"><span style="color:var(--hs-text-3);">Vehicle</span><span>MP 09 XY 4521</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:0.78rem;"><span style="color:var(--hs-text-3);">Distance</span><span style="color:var(--hs-blue);">~3.2 km away</span></div>
+              </div>
+              <button class="btn-hs-secondary" style="width:100%;margin-top:12px;justify-content:center;" onclick="showToast('📞','Calling Driver','Connecting to Ramesh Kumar...')">
+                <i class="bi bi-telephone-fill"></i> Call Driver
+              </button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title">Need Help?</div></div>
+            <div class="panel-body" style="display:flex;flex-direction:column;gap:7px;">
+              <button class="btn-hs-secondary" style="justify-content:flex-start;" onclick="showToast('💬','Support Chat','Connecting to HemoSync support...')">
+                <i class="bi bi-chat-dots" style="color:var(--hs-blue)"></i> Chat with Support
+              </button>
+              <button class="btn-hs-secondary" style="justify-content:flex-start;" onclick="showToast('📞','Helpline','HemoSync helpline: 1800-XXX-XXXX')">
+                <i class="bi bi-telephone" style="color:var(--hs-green)"></i> Call Helpline
+              </button>
+              <button class="btn-hs-secondary" style="justify-content:flex-start;border-color:rgba(232,33,42,0.3);color:var(--hs-red);" onclick="triggerSOS()">
+                <i class="bi bi-exclamation-octagon-fill"></i> Escalate as Emergency
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: REQUEST HISTORY -->
+    <div class="dash-page" id="page-history">
+      <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+        <div>
+          <h2 style="font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;margin-bottom:2px;">Request History</h2>
+          <div style="font-size:0.76rem;color:var(--hs-text-3);">All your blood requests on HemoSync</div>
+        </div>
+        <div class="d-flex gap-2">
+          <select class="form-select-hs" style="width:auto;font-size:0.76rem;" onchange="filterHistory(this.value)">
+            <option value="all">All Status</option>
+            <option value="done">Fulfilled</option>
+            <option value="enroute">En Route</option>
+            <option value="pending">Pending</option>
+          </select>
+          <button class="btn-hs-primary" onclick="showPage('request')">
+            <i class="bi bi-plus-lg"></i> New Request
+          </button>
+        </div>
+      </div>
+      <div class="panel">
+        <div style="overflow-x:auto">
+          <table class="req-table">
+            <thead><tr><th>Request ID</th><th>Blood</th><th>Units</th><th>Component</th><th>Patient</th><th>Urgency</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
+            <tbody id="fullHistoryTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: EMERGENCY CONTACTS -->
+    <div class="dash-page" id="page-contacts">
+      <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+        <div>
+          <h2 style="font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;margin-bottom:2px;">Emergency Contacts</h2>
+          <div style="font-size:0.76rem;color:var(--hs-text-3);">Notified automatically on critical requests</div>
+        </div>
+        <button class="btn-hs-primary" onclick="showAddContact()">
+          <i class="bi bi-person-plus"></i> Add Contact
+        </button>
+      </div>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div id="contactsList"></div>
+        </div>
+        <div class="col-lg-5">
+          <div class="panel mb-3" id="addContactPanel" style="display:none;">
+            <div class="panel-header"><div class="panel-title">Add New Contact</div></div>
+            <div class="panel-body">
+              <div class="mb-3"><label class="form-label-hs">Full Name *</label><input class="form-control-hs" id="newContactName" placeholder="Contact name"/></div>
+              <div class="mb-3">
+                <label class="form-label-hs">Relationship</label>
+                <select class="form-select-hs" id="newContactRel">
+                  <option>Parent</option><option>Spouse</option><option>Sibling</option><option>Friend</option><option>Doctor</option><option>Other</option>
+                </select>
+              </div>
+              <div class="mb-4"><label class="form-label-hs">Phone Number *</label><input type="tel" class="form-control-hs" id="newContactPhone" placeholder="+91 98765 43210"/></div>
+              <div class="d-flex gap-2">
+                <button class="btn-hs-primary flex-fill" onclick="addContact()"><i class="bi bi-plus"></i> Add</button>
+                <button class="btn-hs-secondary" onclick="hideAddContact()">Cancel</button>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title">How It Works</div></div>
+            <div class="panel-body" style="padding:14px 18px;">
+              <div style="font-size:0.8rem;color:var(--hs-text-2);line-height:1.7;margin-bottom:10px;">
+                When you submit a <strong style="color:var(--hs-red);">Critical</strong> blood request or trigger an <strong style="color:var(--hs-red);">SOS</strong>, all your emergency contacts receive an instant SMS notification with your location and request details.
+              </div>
+              <div style="font-size:0.8rem;color:var(--hs-text-2);line-height:1.7;">
+                You can add up to <strong style="color:var(--hs-text);">5 contacts</strong>. We recommend adding family members and your primary care doctor.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: MY PROFILE -->
+    <div class="dash-page" id="page-profile">
+      <div class="mb-4">
+        <h2 style="font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;margin-bottom:2px;">My Profile</h2>
+        <div style="font-size:0.76rem;color:var(--hs-text-3);">Manage your personal account details</div>
+      </div>
+      <div class="row g-3">
+        <div class="col-lg-4">
+          <div class="panel">
+            <div class="panel-body" style="text-align:center;padding:28px 20px;">
+              <div style="width:64px;height:64px;background:var(--hs-red);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:800;color:white;font-family:'Syne',sans-serif;margin:0 auto 14px;" id="profileAvatar">AS</div>
+              <div style="font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:800;margin-bottom:3px;" id="profileName">Arjun Sharma</div>
+              <div style="font-size:0.75rem;color:var(--hs-text-3);margin-bottom:6px;" id="profileEmail">user@gmail.com</div>
+              <div style="display:inline-flex;align-items:center;gap:5px;background:var(--hs-red-subtle);color:var(--hs-red);border:1px solid var(--hs-red-border);border-radius:100px;font-size:0.7rem;font-weight:700;padding:3px 10px;margin-bottom:16px;">
+                <i class="bi bi-droplet-fill"></i> <span id="profileBloodBadge">O+</span> Individual
+              </div>
+              <div style="padding-top:16px;border-top:1px solid var(--hs-border2);">
+                <div style="display:flex;justify-content:space-around;">
+                  <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;color:var(--hs-red);">4</div><div style="font-size:0.62rem;color:var(--hs-text-3);text-transform:uppercase;letter-spacing:0.06em;">Requests</div></div>
+                  <div style="width:1px;background:var(--hs-border2);"></div>
+                  <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;color:var(--hs-green);">3</div><div style="font-size:0.62rem;color:var(--hs-text-3);text-transform:uppercase;letter-spacing:0.06em;">Fulfilled</div></div>
+                  <div style="width:1px;background:var(--hs-border2);"></div>
+                  <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;color:var(--hs-amber);">3</div><div style="font-size:0.62rem;color:var(--hs-text-3);text-transform:uppercase;letter-spacing:0.06em;">Contacts</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-8">
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title">Personal Information</div></div>
+            <div class="panel-body">
+              <div class="row g-3 mb-3">
+                <div class="col-md-6"><label class="form-label-hs">Full Name</label><input class="form-control-hs" id="profName" value="Arjun Sharma"/></div>
+                <div class="col-md-6"><label class="form-label-hs">Date of Birth</label><input type="date" class="form-control-hs" value="1998-03-14"/></div>
+              </div>
+              <div class="row g-3 mb-3">
+                <div class="col-md-6"><label class="form-label-hs">Email Address</label><input class="form-control-hs" id="profEmail" value="user@gmail.com"/></div>
+                <div class="col-md-6"><label class="form-label-hs">Phone Number</label><input class="form-control-hs" placeholder="+91 98765 43210"/></div>
+              </div>
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <label class="form-label-hs">Blood Type</label>
+                  <select class="form-select-hs" id="profBloodType" onchange="updateBloodTypeGlobal(this.value)">
+                    <option>A+</option><option>A−</option><option>B+</option><option>B−</option>
+                    <option>AB+</option><option>AB−</option><option selected>O+</option><option>O−</option>
+                  </select>
+                </div>
+                <div class="col-md-6"><label class="form-label-hs">City</label><input class="form-control-hs" value="Indore, Madhya Pradesh"/></div>
+              </div>
+              <div class="mb-4"><label class="form-label-hs">Home Address</label><input class="form-control-hs" placeholder="Street, Area, City, PIN"/></div>
+              <div class="d-flex gap-2">
+                <button class="btn-hs-primary" onclick="saveProfile()"><i class="bi bi-check-lg"></i> Save Changes</button>
+                <button class="btn-hs-secondary"><i class="bi bi-x"></i> Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="hs-toast-container" id="toastContainer"></div>
+<script src="api-client.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="individual-dashboard.js"></script>
+</body>
+</html>

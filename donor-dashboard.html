@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HemoSync — Donor Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="hemosync.css"/>
+  <style>
+    .don-table { width:100%; border-collapse:collapse; }
+    .don-table th { font-size:0.62rem; font-weight:700; color:var(--hs-text-3); text-transform:uppercase; letter-spacing:0.08em; padding:9px 14px; border-bottom:1px solid var(--hs-border2); text-align:left; }
+    .don-table td { padding:11px 14px; font-size:0.8rem; color:var(--hs-text-2); border-bottom:1px solid var(--hs-border2); vertical-align:middle; }
+    .don-table tr:last-child td { border-bottom:none; }
+    .don-table tr:hover td { background:rgba(255,255,255,0.012); }
+    .don-id { font-family:'Syne',sans-serif; font-size:0.75rem; font-weight:700; color:var(--hs-text); }
+    .don-status { font-size:0.62rem; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; padding:2px 8px; border-radius:100px; }
+    .ds-done     { background:var(--hs-green-bg); color:var(--hs-green); }
+    .ds-upcoming { background:var(--hs-blue-bg); color:var(--hs-blue); }
+    .ds-pending  { background:var(--hs-amber-bg); color:var(--hs-amber); }
+
+    .camp-card { background:var(--hs-surface); border:1px solid var(--hs-border2); border-radius:10px; padding:16px; height:100%; }
+    .camp-date-box { background:var(--hs-red-subtle); border:1px solid var(--hs-red-border); border-radius:8px; padding:6px 10px; text-align:center; flex-shrink:0; min-width:48px; }
+    .camp-date-day { font-family:'Syne',sans-serif; font-size:1.3rem; font-weight:800; color:var(--hs-red); line-height:1; }
+    .camp-date-mon { font-size:0.62rem; font-weight:600; color:var(--hs-text-3); text-transform:uppercase; letter-spacing:0.04em; }
+    .camp-name { font-size:0.85rem; font-weight:700; color:var(--hs-text); line-height:1.3; margin-bottom:3px; }
+    .camp-meta { font-size:0.7rem; color:var(--hs-text-3); margin-bottom:1px; }
+    .camp-slots { font-size:0.68rem; font-weight:600; padding:3px 9px; border-radius:100px; }
+    .slots-open { background:var(--hs-green-bg); color:var(--hs-green); border:1px solid rgba(22,163,74,0.18); }
+    .slots-few  { background:var(--hs-amber-bg); color:var(--hs-amber); border:1px solid rgba(217,119,6,0.18); }
+    .slots-full { background:var(--hs-red-subtle); color:var(--hs-red); border:1px solid var(--hs-red-border); }
+
+    .badge-card { background:var(--hs-surface); border:1px solid var(--hs-border2); border-radius:10px; padding:16px; text-align:center; height:100%; transition:border-color 0.2s; }
+    .badge-card:not(.locked):hover { border-color:var(--hs-border); }
+    .badge-card.locked { opacity:0.5; }
+    .badge-icon  { font-size:1.8rem; margin-bottom:8px; }
+    .badge-name  { font-family:'Syne',sans-serif; font-size:0.84rem; font-weight:700; margin-bottom:4px; }
+    .badge-desc  { font-size:0.7rem; color:var(--hs-text-3); line-height:1.5; margin-bottom:6px; }
+    .badge-earned{ font-size:0.68rem; font-weight:600; }
+
+    .check-item { display:flex; align-items:flex-start; gap:10px; padding:9px 0; border-bottom:1px solid var(--hs-border2); }
+    .check-item:last-child { border-bottom:none; }
+    .check-icon { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.7rem; flex-shrink:0; margin-top:1px; }
+    .check-pass { background:var(--hs-green-bg); border:1px solid rgba(22,163,74,0.2); color:var(--hs-green); }
+    .check-warn { background:var(--hs-amber-bg); border:1px solid rgba(217,119,6,0.2); color:var(--hs-amber); }
+    .check-label  { font-size:0.8rem; font-weight:600; color:var(--hs-text); }
+    .check-detail { font-size:0.7rem; color:var(--hs-text-3); margin-top:2px; }
+
+    .blood-type-chip { display:inline-flex; align-items:center; gap:5px; background:var(--hs-red-subtle); border:1px solid var(--hs-red-border); border-radius:100px; padding:4px 11px; font-size:0.75rem; font-weight:600; color:var(--hs-red); margin-top:8px; }
+  </style>
+</head>
+<body>
+
+<div class="sidebar-toggle" onclick="toggleSidebar()" id="sidebarToggle">
+  <i class="bi bi-list"></i>
+</div>
+
+<div class="dash-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <a class="sidebar-logo" href="index.html">
+      <div class="sidebar-logo-mark">
+        <svg viewBox="0 0 14 16" xmlns="http://www.w3.org/2000/svg"><path d="M7 0C7 0 1 6.5 1 10.5a6 6 0 0 0 12 0C13 6.5 7 0 7 0z"/></svg>
+      </div>
+      <span class="sidebar-logo-text">Hemo<span>Sync</span></span>
+    </a>
+
+    <div class="sidebar-badge">
+      <div class="badge-avatar" id="sideAvatar">PM</div>
+      <div>
+        <div class="badge-name" id="sideName">Priya Mehta</div>
+        <div class="badge-role">Donor Account</div>
+        <div class="blood-type-chip"><i class="bi bi-droplet-fill"></i> <span id="sideBloodType">B+</span></div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Donor Hub</div>
+      <a class="nav-item-hs active" onclick="showPage('schedule')" href="#">
+        <i class="bi bi-calendar-heart"></i> Schedule Donation
+      </a>
+      <a class="nav-item-hs" onclick="showPage('history')" href="#">
+        <i class="bi bi-droplet-half"></i> Donation History
+        <span class="nav-badge" id="histBadge">7</span>
+      </a>
+
+      <div class="nav-section-label" style="margin-top:8px;">Explore</div>
+      <a class="nav-item-hs" onclick="showPage('camps')" href="#">
+        <i class="bi bi-geo-alt"></i> Nearby Camps
+        <span class="nav-badge" style="background:var(--hs-green);">3</span>
+      </a>
+      <a class="nav-item-hs" onclick="showPage('badges')" href="#">
+        <i class="bi bi-award"></i> Badges & Rewards
+        <span class="nav-badge" style="background:var(--hs-amber);">2</span>
+      </a>
+
+      <div class="nav-section-label" style="margin-top:8px;">Account</div>
+      <a class="nav-item-hs" onclick="showPage('profile')" href="#">
+        <i class="bi bi-person-circle"></i> My Profile
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="logout-btn" onclick="handleLogout()">
+        <i class="bi bi-box-arrow-left"></i> Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="dash-main">
+
+    <div class="dash-topbar">
+      <div>
+        <div class="topbar-title" id="topbarTitle">Schedule Donation</div>
+        <div class="topbar-breadcrumb">HemoSync / Donor Dashboard</div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-icon-btn" title="Notifications">
+          <i class="bi bi-bell"></i><span class="notif-dot"></span>
+        </div>
+        <div style="width:1px;height:22px;background:var(--hs-border2);margin:0 4px;"></div>
+        <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" onclick="showPage('profile')">
+          <div style="width:28px;height:28px;background:var(--hs-red);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.68rem;font-weight:700;color:white;" id="topbarAvatar">PM</div>
+          <span style="font-size:0.78rem;font-weight:500;" id="topbarName">Priya</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: SCHEDULE DONATION -->
+    <div class="dash-page active" id="page-schedule">
+      <div class="mb-4">
+        <h2 style="font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;margin-bottom:2px;">Schedule a Donation</h2>
+        <div style="font-size:0.76rem;color:var(--hs-text-3);">Book your next blood donation appointment</div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title">Appointment Details</div></div>
+            <div class="panel-body">
+              <div style="background:var(--hs-green-bg);border:1px solid rgba(22,163,74,0.18);border-radius:8px;padding:10px 13px;margin-bottom:18px;display:flex;align-items:center;gap:9px;">
+                <i class="bi bi-check-circle-fill" style="color:var(--hs-green);font-size:0.9rem;"></i>
+                <div>
+                  <div style="font-size:0.76rem;font-weight:600;">You are eligible to donate</div>
+                  <div style="font-size:0.68rem;color:var(--hs-text-3);margin-top:1px;">92 days since your last donation — minimum 90 days required</div>
+                </div>
+              </div>
+
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <label class="form-label-hs">Preferred Date *</label>
+                  <input type="date" class="form-control-hs" id="schDate" onchange="updateSchSummary()"/>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label-hs">Preferred Time *</label>
+                  <select class="form-select-hs" id="schTime" onchange="updateSchSummary()">
+                    <option value="">Select slot</option>
+                    <option>09:00 AM</option><option>09:30 AM</option>
+                    <option>10:00 AM</option><option>10:30 AM</option>
+                    <option>11:00 AM</option><option>11:30 AM</option>
+                    <option>02:00 PM</option><option>02:30 PM</option>
+                    <option>03:00 PM</option><option>03:30 PM</option>
+                    <option>04:00 PM</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label-hs">Donation Centre *</label>
+                <select class="form-select-hs" id="schCentre" onchange="updateSchSummary()">
+                  <option value="">Select centre</option>
+                  <option>Central Blood Bank, Indore</option>
+                  <option>AIIMS Blood Donation Centre</option>
+                  <option>Bombay Hospital Blood Bank</option>
+                  <option>City Care Blood Centre</option>
+                  <option>Red Cross Donation Drive</option>
+                </select>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label-hs">Donation Type</label>
+                <div class="row g-2">
+                  <div class="col-6">
+                    <div id="dtWhole" onclick="selectDonType('Whole Blood')" style="background:var(--hs-red-subtle);border:1px solid var(--hs-red-border);border-radius:8px;padding:10px;cursor:pointer;text-align:center;">
+                      <div style="font-size:1rem;margin-bottom:4px;">🩸</div>
+                      <div style="font-size:0.74rem;font-weight:600;color:var(--hs-red);">Whole Blood</div>
+                      <div style="font-size:0.64rem;color:var(--hs-text-3);">450 ml · 10 min</div>
+                    </div>
+                  </div>
+                  <div class="col-6">
+                    <div id="dtPlatelets" onclick="selectDonType('Platelets')" style="background:var(--hs-bg2);border:1px solid var(--hs-border);border-radius:8px;padding:10px;cursor:pointer;text-align:center;">
+                      <div style="font-size:1rem;margin-bottom:4px;">🔬</div>
+                      <div style="font-size:0.74rem;font-weight:600;color:var(--hs-text-2);">Platelets</div>
+                      <div style="font-size:0.64rem;color:var(--hs-text-3);">Apheresis · 90 min</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <label class="form-label-hs">Health Notes (optional)</label>
+                <textarea class="form-control-hs" id="schNotes" rows="2" placeholder="Recent illness, medications, or anything staff should know..."></textarea>
+              </div>
+
+              <div class="d-flex gap-2">
+                <button class="btn-hs-primary flex-fill" onclick="submitSchedule()">
+                  <i class="bi bi-calendar-check"></i> Confirm Appointment
+                </button>
+                <button class="btn-hs-secondary" onclick="clearSchedule()">
+                  <i class="bi bi-x"></i> Clear
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-5">
+          <div class="panel mb-3">
+            <div class="panel-header"><div class="panel-title">Appointment Summary</div></div>
+            <div id="schSummaryRows"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title">Pre-Donation Tips</div></div>
+            <div class="panel-body" style="padding:12px 18px;">
+              <div class="check-item"><div class="check-icon check-pass"><i class="bi bi-check"></i></div><div><div class="check-label">Drink plenty of water</div><div class="check-detail">Hydrate well 24 hours before donation</div></div></div>
+              <div class="check-item"><div class="check-icon check-pass"><i class="bi bi-check"></i></div><div><div class="check-label">Eat a healthy meal</div><div class="check-detail">Avoid fatty foods 4 hours before</div></div></div>
+              <div class="check-item"><div class="check-icon check-pass"><i class="bi bi-check"></i></div><div><div class="check-label">Get enough sleep</div><div class="check-detail">At least 7–8 hours the night before</div></div></div>
+              <div class="check-item"><div class="check-icon check-warn"><i class="bi bi-exclamation"></i></div><div><div class="check-label">Avoid alcohol for 24 hrs</div><div class="check-detail">Alcohol can affect donation eligibility</div></div></div>
+              <div class="check-item"><div class="check-icon check-pass"><i class="bi bi-check"></i></div><div><div class="check-label">Bring a valid photo ID</div><div class="check-detail">Aadhar / PAN / Passport accepted</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: DONATION HISTORY -->
+    <div class="dash-page" id="page-history">
+      <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+        <div>
+          <h2 style="font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;margin-bottom:2px;">Donation History</h2>
+          <div style="font-size:0.76rem;color:var(--hs-text-3);">All your blood donation records</div>
+        </div>
+        <button class="btn-hs-secondary" onclick="showToast('📄','Certificate Ready','Your donation certificate has been sent to your email.')">
+          <i class="bi bi-download"></i> Download Certificate
+        </button>
+      </div>
+      <div class="panel">
+        <div style="overflow-x:auto">
+          <table class="don-table">
+            <thead><tr><th>Donation ID</th><th>Blood Type</th><th>Volume</th><th>Component</th><th>Centre</th><th>Date</th><th>Status</th><th>Certificate</th></tr></thead>
+            <tbody id="fullDonTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: NEARBY CAMPS -->
+    <div class="dash-page" id="page-camps">
+      <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+        <div>
+          <h2 style="font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;margin-bottom:2px;">Nearby Blood Donation Camps</h2>
+          <div style="font-size:0.76rem;color:var(--hs-text-3);">Upcoming drives near Indore</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;background:var(--hs-green-bg);border:1px solid rgba(22,163,74,0.18);border-radius:7px;padding:5px 10px;font-size:0.7rem;color:var(--hs-green);">
+          <i class="bi bi-geo-alt-fill"></i> Indore, MP
+        </div>
+      </div>
+      <div class="row g-3" id="campsGrid"></div>
+    </div>
+
+    <!-- PAGE: BADGES & REWARDS -->
+    <div class="dash-page" id="page-badges">
+      <div class="mb-4">
+        <h2 style="font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;margin-bottom:2px;">Badges & Rewards</h2>
+        <div style="font-size:0.76rem;color:var(--hs-text-3);">Achievements earned through your donations</div>
+      </div>
+
+      <div style="background:linear-gradient(135deg,rgba(217,119,6,0.12),rgba(217,119,6,0.04));border:1px solid rgba(217,119,6,0.22);border-radius:12px;padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
+        <div style="font-size:2.4rem;">🏅</div>
+        <div style="flex:1;">
+          <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;color:var(--hs-amber);">Gold Donor</div>
+          <div style="font-size:0.8rem;color:var(--hs-text-2);margin-top:3px;">5–9 lifetime donations · You're making a real difference!</div>
+          <div style="margin-top:9px;display:flex;align-items:center;gap:8px;">
+            <div style="flex:1;height:5px;background:var(--hs-bg2);border-radius:100px;overflow:hidden;max-width:180px;">
+              <div style="height:100%;width:70%;background:var(--hs-amber);border-radius:100px;"></div>
+            </div>
+            <span style="font-size:0.7rem;color:var(--hs-text-3);">7/10 for Platinum</span>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:0.7rem;color:var(--hs-text-3);">Next level</div>
+          <div style="font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:800;color:#8B5CF6;">💎 Platinum</div>
+          <div style="font-size:0.68rem;color:var(--hs-text-3);margin-top:2px;">3 more donations</div>
+        </div>
+      </div>
+
+      <div class="row g-3" id="badgesGrid"></div>
+    </div>
+
+    <!-- PAGE: MY PROFILE -->
+    <div class="dash-page" id="page-profile">
+      <div class="mb-4">
+        <h2 style="font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;margin-bottom:2px;">My Profile</h2>
+        <div style="font-size:0.76rem;color:var(--hs-text-3);">Manage your donor profile and health info</div>
+      </div>
+      <div class="row g-3">
+        <div class="col-lg-4">
+          <div class="panel">
+            <div class="panel-body" style="text-align:center;padding:28px 20px;">
+              <div style="width:64px;height:64px;background:var(--hs-red);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:800;color:white;font-family:'Syne',sans-serif;margin:0 auto 14px;" id="profileAvatar">PM</div>
+              <div style="font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:800;margin-bottom:3px;" id="profileName">Priya Mehta</div>
+              <div style="font-size:0.75rem;color:var(--hs-text-3);margin-bottom:4px;" id="profileEmail">donor@gmail.com</div>
+              <div style="display:inline-flex;align-items:center;gap:5px;background:var(--hs-red-subtle);color:var(--hs-red);border:1px solid var(--hs-red-border);border-radius:100px;font-size:0.7rem;font-weight:700;padding:3px 10px;margin-bottom:16px;">
+                <span style="font-family:'Syne',sans-serif;font-size:0.8rem;font-weight:800;" id="profileBloodPill">B+</span> Donor
+              </div>
+              <div style="padding-top:16px;border-top:1px solid var(--hs-border2);">
+                <div style="display:flex;justify-content:space-around;">
+                  <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;color:var(--hs-red);">7</div><div style="font-size:0.62rem;color:var(--hs-text-3);text-transform:uppercase;letter-spacing:0.06em;">Donations</div></div>
+                  <div style="width:1px;background:var(--hs-border2);"></div>
+                  <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;color:var(--hs-green);">21</div><div style="font-size:0.62rem;color:var(--hs-text-3);text-transform:uppercase;letter-spacing:0.06em;">Lives</div></div>
+                  <div style="width:1px;background:var(--hs-border2);"></div>
+                  <div style="text-align:center;"><div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;color:var(--hs-amber);">6🔥</div><div style="font-size:0.62rem;color:var(--hs-text-3);text-transform:uppercase;letter-spacing:0.06em;">Streak</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-8">
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title">Personal Information</div></div>
+            <div class="panel-body">
+              <div class="row g-3 mb-3">
+                <div class="col-md-6"><label class="form-label-hs">Full Name</label><input class="form-control-hs" id="profName" value="Priya Mehta"/></div>
+                <div class="col-md-6"><label class="form-label-hs">Date of Birth</label><input type="date" class="form-control-hs" value="2001-09-14"/></div>
+              </div>
+              <div class="row g-3 mb-3">
+                <div class="col-md-6"><label class="form-label-hs">Email Address</label><input class="form-control-hs" id="profEmail" value="donor@gmail.com"/></div>
+                <div class="col-md-6"><label class="form-label-hs">Phone Number</label><input class="form-control-hs" placeholder="+91 98765 43210"/></div>
+              </div>
+              <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                  <label class="form-label-hs">Blood Type</label>
+                  <select class="form-select-hs" id="profBloodType" onchange="updateBloodType(this.value)">
+                    <option>A+</option><option>A−</option><option selected>B+</option><option>B−</option>
+                    <option>AB+</option><option>AB−</option><option>O+</option><option>O−</option>
+                  </select>
+                </div>
+                <div class="col-md-4"><label class="form-label-hs">Weight (kg)</label><input class="form-control-hs" value="58"/></div>
+                <div class="col-md-4">
+                  <label class="form-label-hs">Gender</label>
+                  <select class="form-select-hs"><option>Female</option><option>Male</option><option>Other</option></select>
+                </div>
+              </div>
+              <div class="mb-4"><label class="form-label-hs">Home Address</label><input class="form-control-hs" placeholder="Street, City, State, PIN"/></div>
+              <div class="d-flex gap-2">
+                <button class="btn-hs-primary" onclick="saveProfile()"><i class="bi bi-check-lg"></i> Save Changes</button>
+                <button class="btn-hs-secondary"><i class="bi bi-x"></i> Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="hs-toast-container" id="toastContainer"></div>
+<script src="api-client.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="donor-dashboard.js"></script>
+</body>
+</html>
