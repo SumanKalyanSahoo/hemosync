@@ -34,9 +34,55 @@ async function init() {
   setEl('reqAutoFillName',   name);
   setEl('reqAutoFillBlood',  user.blood_type || '');
 
-  await Promise.all([loadInventory(), loadRequests(), loadContacts()]);
+  await Promise.all([loadInventory(), loadRequests(), loadContacts(), loadProfile()]);
   renderBloodTypePicker();
   updateReqSummary();
+}
+
+// Load full profile from DB and populate form fields
+async function loadProfile() {
+  try {
+    const res  = await apiRequest('/auth/me');
+    if (!res) return;
+    const json = await res.json();
+    const user = json.data?.user;
+    const prof = json.data?.profile;
+    if (!user) return;
+
+    // Populate form fields with real DB values
+    const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+    setVal('profName',      user.name);
+    setVal('profEmail',     user.email);
+
+    // blood type select
+    const btEl = document.getElementById('profBloodType');
+    if (btEl && user.blood_type) btEl.value = user.blood_type;
+
+    if (prof) {
+      setVal('profDob',    prof.date_of_birth ? prof.date_of_birth.split('T')[0] : '');
+      setVal('profGender', prof.gender);
+    }
+
+    // Update session token with latest data from DB
+    const updated = { ...sessionUser, name: user.name, blood_type: user.blood_type };
+    Tokens.setUser(updated);
+
+    // Sync displayed values
+    const initials = user.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+    setEl('sideAvatar',        initials);
+    setEl('topbarAvatar',      initials);
+    setEl('profileAvatar',     initials);
+    setEl('sideName',          user.name);
+    setEl('topbarName',        user.name.split(' ')[0]);
+    setEl('profileName',       user.name);
+    setEl('profileEmail',      user.email);
+    setEl('profileBloodBadge', user.blood_type || '—');
+    setEl('reqAutoFillName',   user.name);
+    setEl('reqAutoFillBlood',  user.blood_type || '');
+
+    selectedBloodType = user.blood_type || selectedBloodType;
+    renderBloodTypePicker();
+  } catch (e) { console.error('Profile load error', e); }
 }
 
 function setEl(id, val) {
