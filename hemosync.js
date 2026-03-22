@@ -5,7 +5,7 @@
 
 // ── API BASE URL ───────────────────────────────────────────
 // Change this to your deployed backend URL in production
-const API = 'https://hemosync-backend-production.up.railway.app';
+const API = 'https://hemosync-backend-production.up.railway.app/api';
 
 // ── TOKEN HELPERS ──────────────────────────────────────────
 const Tokens = {
